@@ -1,0 +1,8 @@
+violation_anonymized.csv
+__pycache__/
+*.pyc
+.env
+.venv/
+env/
+venv/
+.streamlit/
