@@ -5,68 +5,42 @@ import {
   ChevronRight, RefreshCw, BarChart2
 } from "lucide-react";
 
-// ─── DESIGN TOKENS & DATA ────────────────────────────────────────────────────
-const DATA = {
-  cityStats: {
-    totalHotspots: 484,
-    totalDelayHrs: 7759,
-    chronicOffenders: 6,
-    worstHotspot: 3,
-    worstDelay: 6497,
-  },
-  tickerItems: [
-    { id: 3,   block: "SUN_0400", delay: 6497, status: "CRITICAL" },
-    { id: 14,  block: "SUN_0400", delay: 216,  status: "HIGH"     },
-    { id: 31,  block: "SUN_0400", delay: 10,   status: "ACTIVE"   },
-    { id: 7,   block: "SAT_2200", delay: 4120, status: "CRITICAL" },
-    { id: 22,  block: "FRI_1800", delay: 890,  status: "HIGH"     },
-    { id: 45,  block: "MON_0800", delay: 340,  status: "HIGH"     },
-    { id: 88,  block: "WED_1200", delay: 122,  status: "ACTIVE"   },
-    { id: 103, block: "THU_0900", delay: 56,   status: "ACTIVE"   },
-    { id: 201, block: "SUN_0300", delay: 5201, status: "CRITICAL" },
-    { id: 316, block: "SAT_0500", delay: 4844, status: "CRITICAL" },
-  ],
-  timeBlocks: ["Sunday_0400","Saturday_2200","Friday_1800","Monday_0800"],
-  hotspots: [
-    { id: 3,   lat: 12.9808, lon: 77.5769, delay: 6497, cost: 3, conf: 1.00, chronic: true,  tag: "🔴 Repeat Offender", critical: "🚑 Victoria Gen", event: null },
-    { id: 14,  lat: 12.9720, lon: 77.5950, delay: 216,  cost: 3, conf: 0.77, chronic: false, tag: "🟡 Anomaly", critical: null, event: "🚧 Metro Spillover" },
-    { id: 31,  lat: 12.9650, lon: 77.6100, delay: 10,   cost: 1, conf: 0.18, chronic: false, tag: "🟡 Anomaly", critical: null, event: null },
-    { id: 7,   lat: 13.0100, lon: 77.5500, delay: 4120, cost: 3, conf: 0.95, chronic: true,  tag: "🔴 Repeat Offender", critical: "🏫 St. Joseph's", event: null },
-    { id: 22,  lat: 12.9550, lon: 77.6200, delay: 890,  cost: 2, conf: 0.82, chronic: true,  tag: "🔴 Repeat Offender", critical: null, event: "📢 VIP Route" },
-    { id: 45,  lat: 12.9400, lon: 77.5700, delay: 340,  cost: 2, conf: 0.65, chronic: false, tag: "🟡 Anomaly", critical: null, event: null },
-    { id: 201, lat: 12.9900, lon: 77.5600, delay: 5201, cost: 3, conf: 0.98, chronic: true,  tag: "🔴 Repeat Offender", critical: "🚑 Manipal Life", event: null },
-    { id: 316, lat: 12.9750, lon: 77.5800, delay: 4844, cost: 3, conf: 0.96, chronic: true,  tag: "🔴 Repeat Offender", critical: null, event: "🚧 Metro Spillover" },
-  ],
-  paretoCurve: [
-    { officers: 1,  delay: 6497  },
-    { officers: 2,  delay: 10341 },
-    { officers: 3,  delay: 11581 },
-    { officers: 4,  delay: 12461 },
-    { officers: 5,  delay: 13041 },
-    { officers: 6,  delay: 13297 },
-    { officers: 7,  delay: 13409 },
-    { officers: 8,  delay: 13465 },
-  ],
-  chronicRegistry: [
-    { rank: 1, id: 3,   violations: 4330, conf: 1.00, peak: "SUN_0400", totalDelay: 6497,  rec: "Permanent barricade" },
-    { rank: 2, id: 201, violations: 3466, conf: 0.98, peak: "SUN_0300", totalDelay: 5201,  rec: "Permanent barricade" },
-    { rank: 3, id: 316, violations: 3228, conf: 0.96, peak: "SAT_0500", totalDelay: 4844,  rec: "Permanent barricade" },
-    { rank: 4, id: 7,   violations: 2901, conf: 0.95, peak: "SAT_2200", totalDelay: 4120,  rec: "Permanent barricade" },
-    { rank: 5, id: 98,  violations: 1100, conf: 0.88, peak: "MON_0800", totalDelay: 1240,  rec: "Regular patrol slot" },
-    { rank: 6, id: 22,  violations: 890,  conf: 0.82, peak: "FRI_1800", totalDelay: 890,   rec: "Regular patrol slot" },
-  ],
-  pillars: [
-    { title: "DBSCAN Clustering", desc: "Maps 298k raw violation rows into 484 physical gridlock nodes.", icon: MapIcon },
-    { title: "Hawkes Probability", desc: "Calculates spatio-temporal confidence scores to separate anomalies from chronic contagions.", icon: Activity },
-    { title: "Knapsack Optimizer", desc: "Integer Linear Programming maximizes delay cleared without exceeding officer constraints.", icon: Cpu },
-    { title: "Gravity Routing", desc: "Multi-agent heuristic maximizing lives-per-km via Damage/Distance decay.", icon: GitMerge },
-    { title: "Civic Empathy Override", desc: "Applies 3x priority multipliers to hotspots within 500m of Hospitals and Schools.", icon: ShieldAlert },
-    { title: "Explainable Context", desc: "Ray-casting links hotspots to Metro Construction and VIP Rally polygons.", icon: Layers },
-    { title: "Pareto Efficiency", desc: "Mathematically proves the point of diminishing returns for resource allocation.", icon: TrendingUp },
-    { title: "Digital Twin Simulator", desc: "Silently solves N+x states to forecast marginal ROI of off-duty officer deployment.", icon: Crosshair },
-    { title: "Chronic Registry", desc: "Identifies 17-week repeat offenders for permanent infrastructure barricading.", icon: AlertTriangle },
-  ]
-};
+// ─── STATIC CONSTANTS ────────────────────────────────────────────────────────
+const TIME_BLOCKS = ["Sunday_0400","Saturday_2200","Friday_1800","Monday_0800"];
+
+const TICKER_ITEMS = [
+  { id: 3,   block: "SUN_0400", delay: 6497, status: "CRITICAL" },
+  { id: 14,  block: "SUN_0400", delay: 216,  status: "HIGH"     },
+  { id: 31,  block: "SUN_0400", delay: 10,   status: "ACTIVE"   },
+  { id: 7,   block: "SAT_2200", delay: 4120, status: "CRITICAL" },
+  { id: 22,  block: "FRI_1800", delay: 890,  status: "HIGH"     },
+  { id: 45,  block: "MON_0800", delay: 340,  status: "HIGH"     },
+  { id: 88,  block: "WED_1200", delay: 122,  status: "ACTIVE"   },
+  { id: 103, block: "THU_0900", delay: 56,   status: "ACTIVE"   },
+  { id: 201, block: "SUN_0300", delay: 5201, status: "CRITICAL" },
+  { id: 316, block: "SAT_0500", delay: 4844, status: "CRITICAL" },
+];
+
+const CHRONIC_REGISTRY = [
+  { rank: 1, id: 3,   violations: 4330, conf: 1.00, peak: "SUN_0400", totalDelay: 6497,  rec: "Permanent barricade" },
+  { rank: 2, id: 201, violations: 3466, conf: 0.98, peak: "SUN_0300", totalDelay: 5201,  rec: "Permanent barricade" },
+  { rank: 3, id: 316, violations: 3228, conf: 0.96, peak: "SAT_0500", totalDelay: 4844,  rec: "Permanent barricade" },
+  { rank: 4, id: 7,   violations: 2901, conf: 0.95, peak: "SAT_2200", totalDelay: 4120,  rec: "Permanent barricade" },
+  { rank: 5, id: 98,  violations: 1100, conf: 0.88, peak: "MON_0800", totalDelay: 1240,  rec: "Regular patrol slot" },
+  { rank: 6, id: 22,  violations: 890,  conf: 0.82, peak: "FRI_1800", totalDelay: 890,   rec: "Regular patrol slot" },
+];
+
+const PILLARS = [
+  { title: "DBSCAN Clustering", desc: "Maps 298k raw violation rows into 484 physical gridlock nodes.", icon: MapIcon },
+  { title: "Hawkes Probability", desc: "Calculates spatio-temporal confidence scores to separate anomalies from chronic contagions.", icon: Activity },
+  { title: "Knapsack Optimizer", desc: "Integer Linear Programming maximizes delay cleared without exceeding officer constraints.", icon: Cpu },
+  { title: "Gravity Routing", desc: "Multi-agent heuristic maximizing lives-per-km via Damage/Distance decay.", icon: GitMerge },
+  { title: "Civic Empathy Override", desc: "Applies 3x priority multipliers to hotspots within 500m of Hospitals and Schools.", icon: ShieldAlert },
+  { title: "Explainable Context", desc: "Ray-casting links hotspots to Metro Construction and VIP Rally polygons.", icon: Layers },
+  { title: "Pareto Efficiency", desc: "Mathematically proves the point of diminishing returns for resource allocation.", icon: TrendingUp },
+  { title: "Digital Twin Simulator", desc: "Silently solves N+x states to forecast marginal ROI of off-duty officer deployment.", icon: Crosshair },
+  { title: "Chronic Registry", desc: "Identifies 17-week repeat offenders for permanent infrastructure barricading.", icon: AlertTriangle },
+];
 
 // ─── UTILITY ──────────────────────────────────────────────────────────────────
 function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
@@ -74,7 +48,7 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 
 // ─── TICKER STRIP ─────────────────────────────────────────────────────────────
 function TickerStrip() {
-  const items = [...DATA.tickerItems, ...DATA.tickerItems];
+  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
   const statusColor = { CRITICAL: "var(--alert)", HIGH: "#FFB800", ACTIVE: "var(--signal)" };
 
   return (
@@ -101,7 +75,7 @@ function TickerStrip() {
 }
 
 // ─── MAP CANVAS ───────────────────────────────────────────────────────────────
-function MapCanvas({ dispatched, mode }) {
+function MapCanvas({ hotspots, cityStats, dispatched, mode }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const timeRef = useRef(0);
@@ -141,7 +115,7 @@ function MapCanvas({ dispatched, mode }) {
 
       // Routes (only in tactical mode)
       if (mode === "tactical") {
-        const dispatchedHotspots = DATA.hotspots.filter(h => dispatched.includes(h.id));
+        const dispatchedHotspots = hotspots.filter(h => dispatched.includes(h.id));
         dispatchedHotspots.forEach((h, i) => {
           const [hx, hy] = toCanvas(h.lat, h.lon);
           const progress = clamp((t * 0.8 - i * 0.2), 0, 1);
@@ -156,10 +130,10 @@ function MapCanvas({ dispatched, mode }) {
       }
 
       // Hotspots
-      DATA.hotspots.forEach(h => {
+      hotspots.forEach(h => {
         const [x, y] = toCanvas(h.lat, h.lon);
         const isDispatched = dispatched.includes(h.id) && mode === "tactical";
-        const isWorst = h.id === DATA.cityStats.worstHotspot;
+        const isWorst = h.id === cityStats.worstHotspot;
         const r = clamp(6 + h.delay / 500, 6, 24);
         const pulse = isWorst || mode === "hero" ? Math.sin(t * (mode === "hero" ? 4 : 3)) * 0.3 + 0.7 : 1;
 
@@ -198,7 +172,7 @@ function MapCanvas({ dispatched, mode }) {
     }
     animRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animRef.current);
-  }, [dispatched, mode]);
+  }, [dispatched, mode, hotspots, cityStats]);
 
   return <canvas ref={canvasRef} className="w-full h-full block" />;
 }
@@ -206,8 +180,19 @@ function MapCanvas({ dispatched, mode }) {
 // ─── MAIN APPLICATION ─────────────────────────────────────────────────────────
 export default function App() {
   const [appState, setAppState] = useState("pitch"); // pitch | analyzing | deployed
+  
+  // API State
+  const [cityData, setCityData] = useState(null);
+  const [dispatchResults, setDispatchResults] = useState(null);
+  
+  // Control State
   const [officers, setOfficers] = useState(5);
   const [timeBlock, setTimeBlock] = useState("Sunday_0400");
+  const [alpha, setAlpha] = useState(1.0);
+  const [lambda, setLambda] = useState(0.15);
+  const [enableCritical, setEnableCritical] = useState(false);
+  const [enableEvents, setEnableEvents] = useState(false);
+  
   const [dispatched, setDispatched] = useState([]);
   const [spinnerStep, setSpinnerStep] = useState(0);
 
@@ -221,42 +206,77 @@ export default function App() {
     "Tactical Manifest Ready."
   ];
 
-  function handleDeploy() {
+  // Fetch Vitals on Mount
+  useEffect(() => {
+    fetch('http://localhost:8000/api/vitals')
+      .then(res => res.json())
+      .then(data => setCityData(data))
+      .catch(err => {
+        console.error(err);
+        alert("Failed to load /api/vitals. Ensure FastAPI is running on port 8000.");
+      });
+  }, []);
+
+  async function handleDeploy() {
     if (appState === "analyzing") return;
     setAppState("analyzing");
     setSpinnerStep(0);
     
-    let step = 0;
     const interval = setInterval(() => {
-      step++;
-      setSpinnerStep(step);
-      if (step >= SPINNER_STEPS.length - 1) {
-        clearInterval(interval);
-        setTimeout(() => {
-          let budget = officers;
-          const picked = [];
-          const sorted = [...DATA.hotspots].sort((a, b) => b.delay - a.delay);
-          for (const h of sorted) {
-            if (h.cost <= budget) { picked.push(h.id); budget -= h.cost; }
-          }
-          setDispatched(picked);
-          setAppState("deployed");
-        }, 800);
-      }
+      setSpinnerStep(s => (s < SPINNER_STEPS.length - 1 ? s + 1 : s));
     }, 400);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          time_block: timeBlock,
+          available_officers: officers,
+          alpha: alpha,
+          lambda_: lambda,
+          enable_critical: enableCritical,
+          enable_events: enableEvents
+        })
+      });
+      const data = await res.json();
+      
+      clearInterval(interval);
+      setSpinnerStep(SPINNER_STEPS.length - 1);
+
+      if (data.error) {
+        alert("Dispatcher Error: " + data.error);
+        setAppState("pitch");
+        return;
+      }
+
+      setTimeout(() => {
+        setDispatchResults(data);
+        setDispatched(data.dispatched_ids);
+        setAppState("deployed");
+      }, 500);
+
+    } catch (err) {
+      clearInterval(interval);
+      console.error(err);
+      alert("API request failed.");
+      setAppState("pitch");
+    }
   }
 
-  const dispatchedHotspots = DATA.hotspots.filter(h => dispatched.includes(h.id));
-  const totalDelayCleared = dispatchedHotspots.reduce((s, h) => s + h.delay, 0);
-  const unmanaged = DATA.hotspots.reduce((s, h) => s + h.delay, 0);
+  if (!cityData) {
+    return (
+      <div className="min-h-screen bg-[var(--abyss)] flex flex-col items-center justify-center font-display text-[var(--frost)] text-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-[var(--signal)] mb-6" />
+        <h2 className="text-xl tracking-[0.2em] uppercase font-bold text-white">Establishing connection to Command Center...</h2>
+        <p className="text-[var(--slate)] mt-2 font-mono text-sm">Booting FastAPI backend and loading historical citation matrix</p>
+      </div>
+    );
+  }
 
   // Twin Simulator Logic (Global Max Thresholding Patch)
-  const twinData = [
-    { n: 1, delta: 45, me: 45.0 },
-    { n: 2, delta: 65, me: 32.5 },
-    { n: 3, delta: 282, me: 94.0 }, // The Lumpy Knapsack Breakthrough
-  ];
-  const maxME = Math.max(...twinData.map(d => d.me));
+  const twinData = dispatchResults?.twin_data || [];
+  const maxME = Math.max(...twinData.map(d => d.me), 1); // fallback to 1 to avoid Infinity
   const thetaH = maxME * 0.9;
   const thetaL = maxME * 0.5;
 
@@ -284,7 +304,7 @@ export default function App() {
       {appState === "pitch" && (
         <div className="relative w-full min-h-[85vh] flex flex-col justify-center animate-[slideUp_0.5s_ease-out]">
           <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
-            <MapCanvas dispatched={[]} mode="hero" />
+            <MapCanvas hotspots={cityData.hotspots} cityStats={cityData.cityStats} dispatched={[]} mode="hero" />
             <div className="absolute inset-0 bg-gradient-to-r from-[var(--abyss)] via-[var(--abyss)] to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--abyss)] to-transparent" />
           </div>
@@ -301,7 +321,9 @@ export default function App() {
               </div>
               
               <h1 className="font-display text-7xl font-bold leading-[1.1] mb-6 tracking-tight text-white">
-                <span className="text-[var(--alert)] drop-shadow-[0_0_30px_rgba(255,59,92,0.4)]">7,759 HOURS</span><br/>
+                <span className="text-[var(--alert)] drop-shadow-[0_0_30px_rgba(255,59,92,0.4)]">
+                  {cityData.cityStats.totalDelayHrs.toLocaleString()} HOURS
+                </span><br/>
                 OF CITY-WIDE GRIDLOCK.<br/>
                 <span className="text-[var(--slate)]">EVERY SINGLE WEEK.</span>
               </h1>
@@ -328,7 +350,7 @@ export default function App() {
             <div className="max-w-7xl mx-auto px-8">
               <div className="text-[10px] text-[var(--slate)] font-display uppercase tracking-[0.2em] mb-4">The 9-Pillar Architecture</div>
               <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 cursor-grab active:cursor-grabbing snap-x">
-                {DATA.pillars.map((p, i) => (
+                {PILLARS.map((p, i) => (
                   <div key={i} className="snap-start shrink-0 w-72 bg-[var(--abyss)] border border-[var(--elevated)] rounded-xl p-5 hover:border-[var(--signal)]/50 transition-colors">
                     <p.icon className="w-6 h-6 text-[var(--signal)] mb-4" />
                     <h3 className="font-display font-bold text-[15px] mb-2">{p.title}</h3>
@@ -347,39 +369,65 @@ export default function App() {
         {/* Top Command Bar (Replaces Sidebar) */}
         <div className="glass-panel rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-6 relative z-30">
           <div className="flex items-center gap-6 flex-1">
-            <div className="flex-1 max-w-[200px]">
+            <div className="flex-1 max-w-[150px]">
               <div className="text-[10px] text-[var(--slate)] font-display uppercase tracking-widest mb-2">Time Block</div>
               <select 
                 value={timeBlock} 
                 onChange={e => { setTimeBlock(e.target.value); setAppState("pitch"); }}
                 className="w-full bg-[var(--abyss)] border border-[var(--elevated)] rounded-md px-3 py-2 text-sm font-mono focus:border-[var(--signal)] outline-none"
               >
-                {DATA.timeBlocks.map(t => <option key={t} value={t}>{t}</option>)}
+                {TIME_BLOCKS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             
-            <div className="flex-1 max-w-[300px] px-6 border-l border-r border-[var(--elevated)]">
+            <div className="flex-1 max-w-[200px] px-6 border-l border-[var(--elevated)]">
               <div className="flex justify-between items-baseline mb-2">
                 <div className="text-[10px] text-[var(--slate)] font-display uppercase tracking-widest">Available Officers</div>
                 <div className="font-mono font-bold text-lg text-[var(--signal)]">{officers}</div>
               </div>
               <input 
-                type="range" min={1} max={10} value={officers}
+                type="range" min={1} max={20} value={officers}
                 onChange={e => { setOfficers(+e.target.value); setAppState("pitch"); }}
                 className="w-full h-1 bg-[var(--elevated)] rounded-full appearance-none cursor-pointer accent-[var(--signal)]"
               />
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex-1 max-w-[150px] px-6 border-l border-[var(--elevated)]">
+              <div className="flex justify-between items-baseline mb-2">
+                <div className="text-[10px] text-[var(--slate)] font-display uppercase tracking-widest">Gravity Alpha</div>
+                <div className="font-mono font-bold text-sm text-[var(--signal)]">{alpha.toFixed(1)}</div>
+              </div>
+              <input 
+                type="range" min={0.5} max={2.0} step={0.1} value={alpha}
+                onChange={e => { setAlpha(+e.target.value); setAppState("pitch"); }}
+                className="w-full h-1 bg-[var(--elevated)] rounded-full appearance-none cursor-pointer accent-[var(--signal)]"
+              />
+            </div>
+
+            <div className="flex-1 max-w-[150px] px-6 border-l border-[var(--elevated)]">
+              <div className="flex justify-between items-baseline mb-2">
+                <div className="text-[10px] text-[var(--slate)] font-display uppercase tracking-widest">Urgency Lambda</div>
+                <div className="font-mono font-bold text-sm text-[var(--signal)]">{lambda.toFixed(2)}</div>
+              </div>
+              <input 
+                type="range" min={0} max={0.5} step={0.05} value={lambda}
+                onChange={e => { setLambda(+e.target.value); setAppState("pitch"); }}
+                className="w-full h-1 bg-[var(--elevated)] rounded-full appearance-none cursor-pointer accent-[var(--signal)]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 px-6 border-l border-[var(--elevated)]">
               <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" checked={enableCritical} onChange={e => {setEnableCritical(e.target.checked); setAppState("pitch")}} className="hidden" />
                 <div className="w-8 h-4 bg-[var(--abyss)] border border-[var(--elevated)] rounded-full relative transition-colors group-hover:border-[#FF3B5C]">
-                  <div className="absolute left-1 top-1 w-2 h-2 rounded-full bg-[#FF3B5C]" />
+                  <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-[#FF3B5C] transition-transform ${enableCritical ? 'translate-x-4' : 'translate-x-1'}`} />
                 </div>
                 <span className="text-xs font-display text-[var(--slate)] uppercase tracking-wider">Hospitals/Schools</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" checked={enableEvents} onChange={e => {setEnableEvents(e.target.checked); setAppState("pitch")}} className="hidden" />
                 <div className="w-8 h-4 bg-[var(--abyss)] border border-[var(--elevated)] rounded-full relative transition-colors group-hover:border-[#FF8C00]">
-                  <div className="absolute left-1 top-1 w-2 h-2 rounded-full bg-[#FF8C00]" />
+                  <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-[#FF8C00] transition-transform ${enableEvents ? 'translate-x-4' : 'translate-x-1'}`} />
                 </div>
                 <span className="text-xs font-display text-[var(--slate)] uppercase tracking-wider">Event Overlays</span>
               </label>
@@ -425,7 +473,7 @@ export default function App() {
               </div>
             )}
 
-            <MapCanvas dispatched={dispatched} mode={appState === "deployed" ? "tactical" : "hero"} />
+            <MapCanvas hotspots={cityData.hotspots} cityStats={cityData.cityStats} dispatched={dispatched} mode={appState === "deployed" ? "tactical" : "hero"} />
             
             {/* Map Legend */}
             <div className="absolute bottom-4 left-4 z-10 bg-[var(--abyss)]/90 border border-[var(--elevated)] rounded-md p-3 flex flex-col gap-2 backdrop-blur-sm">
@@ -445,29 +493,29 @@ export default function App() {
             {appState === "pitch" && (
               <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
                 <AlertTriangle className="w-10 h-10 text-[var(--slate)] mb-4" />
-                <p className="font-display text-sm">Awaiting Dispatch Execution.<br/>Current City Delay: {Math.round(unmanaged/60)} hrs.</p>
+                <p className="font-display text-sm">Awaiting Dispatch Execution.<br/>System Online.</p>
               </div>
             )}
 
-            {appState === "deployed" && (
+            {appState === "deployed" && dispatchResults && (
               <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-3 animate-[slideUp_0.4s_ease-out]">
                 {/* Roll-down metrics */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-[var(--abyss)] border border-[var(--elevated)] rounded-lg p-3">
                     <div className="text-[9px] text-[var(--slate)] font-display uppercase tracking-widest mb-1">Delay Cleared</div>
-                    <div className="font-mono text-xl font-bold text-[var(--signal)]">{Math.round(totalDelayCleared/60)}h</div>
+                    <div className="font-mono text-xl font-bold text-[var(--signal)]">{(dispatchResults.metrics.total_delay_cleared/60).toFixed(1)}h</div>
                   </div>
                   <div className="bg-[var(--abyss)] border border-[var(--elevated)] rounded-lg p-3">
                     <div className="text-[9px] text-[var(--slate)] font-display uppercase tracking-widest mb-1">Efficiency Rate</div>
-                    <div className="font-mono text-xl font-bold text-[var(--frost)]">{Math.round((totalDelayCleared/unmanaged)*100)}%</div>
+                    <div className="font-mono text-xl font-bold text-[var(--frost)]">{dispatchResults.metrics.pct_cleared.toFixed(1)}%</div>
                   </div>
                 </div>
 
-                {dispatchedHotspots.sort((a,b) => b.delay - a.delay).map((h, i) => (
-                  <div key={h.id} className="bg-[var(--abyss)] border border-[var(--elevated)] border-l-2 border-l-[var(--signal)] rounded-lg p-4">
+                {dispatchResults.routes.map((h, i) => (
+                  <div key={`${h.id}-${i}`} className="bg-[var(--abyss)] border border-[var(--elevated)] border-l-2 border-l-[var(--signal)] rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <div className="font-mono text-sm font-bold text-[var(--frost)]">Stop #{i+1} — HS-{h.id}</div>
-                      <div className="text-[9px] px-2 py-0.5 rounded border border-[#FF3B5C]/30 text-[#FF3B5C] bg-[#FF3B5C]/10 font-display uppercase tracking-wider">{h.tag.split(" ")[1]}</div>
+                      <div className="font-mono text-sm font-bold text-[var(--frost)]">Off #{h.officer_id + 1} Stop #{h.route_sequence} — HS-{h.id}</div>
+                      <div className="text-[9px] px-2 py-0.5 rounded border border-[#FF3B5C]/30 text-[#FF3B5C] bg-[#FF3B5C]/10 font-display uppercase tracking-wider">{h.tag?.split(" ")[1] || h.tag || "Normal"}</div>
                     </div>
                     <div className="font-mono text-2xl font-bold text-[var(--signal)] leading-none mb-3">
                       {h.delay.toLocaleString()} <span className="text-[10px] text-[var(--slate)] font-normal">MINS</span>
@@ -487,7 +535,7 @@ export default function App() {
         </div>
 
         {/* Bottom Analytics (Digital Twin + Pareto) */}
-        {appState === "deployed" && (
+        {appState === "deployed" && dispatchResults && (
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 animate-[slideUp_0.6s_ease-out]">
             
             {/* Digital Twin */}
@@ -515,7 +563,7 @@ export default function App() {
               <div className="bg-[var(--signal)]/10 border border-[var(--signal)]/30 rounded-lg p-4 flex gap-3">
                 <Crosshair className="text-[var(--signal)] shrink-0 w-5 h-5" />
                 <p className="font-display text-sm text-[var(--frost)] leading-relaxed">
-                  <strong>Breakthrough Detected.</strong> Deploying <span className="text-[var(--signal)]">+3 officers</span> yields maximum global efficiency ({maxME} min/officer), unlocking a critical infrastructure hotspot previously inaccessible due to Knapsack budget constraints.
+                  <strong>Simulation Complete.</strong> Displaying real-time forecast for increasing budget by 1, 2, or 3 officers to capture remaining delay in this time block.
                 </p>
               </div>
             </div>
@@ -526,7 +574,7 @@ export default function App() {
                 <BarChart2 className="w-3 h-3" /> Chronic Registry (17-Week Trend)
               </div>
               <div className="space-y-3">
-                {DATA.chronicRegistry.slice(0,4).map(r => (
+                {CHRONIC_REGISTRY.slice(0,4).map(r => (
                   <div key={r.id} className="bg-[var(--abyss)] border border-[var(--elevated)] rounded-lg p-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="font-mono text-lg font-bold text-[var(--slate)]">0{r.rank}</div>
