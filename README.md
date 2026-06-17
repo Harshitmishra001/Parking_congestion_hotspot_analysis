@@ -7,7 +7,11 @@ This repository contains the **Predictive Parking & Automated Dispatch System**,
 1. **Spatiotemporal Data Engineering**: Extracts features and clusters parking violations using DBSCAN (Haversine metric) to pinpoint physical hotspots.
 2. **Impact Calculation**: Quantifies the true impact of a hotspot based on the volume of historical violations and variance across multiple weeks (confidence score) to deduce estimated "Commuter Minutes Lost".
 3. **Automated Dispatch Knapsack Optimizer**: Uses the `pulp` library to solve the Integer Linear Programming (ILP) problem. It dynamically allocates a finite number of officers to hotspots to maximize overall impact relief.
-4. **Command Center Dashboard**: An interactive UI built on Streamlit with Folium for tactical mapping and dispatch manifests.
+4. **Multi-Agent Gravity-Based Priority Routing**: Routes deployed officers efficiently using a custom distance-decay and urgency-growth gravity model, optimizing travel between hotspots.
+5. **Digital Twin Lite Marginal Gain Simulator**: Simulates alternate budget increments (N+1, N+2, N+3) by solving expanded parallel ILPs, calculating true marginal efficiencies (mins/officer) and avoiding the "Lumpy Knapsack Effect" with global maximum thresholding.
+6. **Critical Infrastructure & Policy Overrides**: Incorporates dynamic impact multipliers for critical Points of Interest (POIs) like Hospitals (3x) and Schools (1.5x) to automatically elevate priority.
+7. **Explainable AI (XAI) Event Context Overlays**: Uses Ray Casting Point-in-Polygon geometric algorithms to identify temporary high-impact events (e.g. Metro Construction, Political Rallies) and contextualizes their secondary effects on hotspots using visual map overlays and UI triage badges.
+8. **Command Center Dashboard**: An interactive UI built on Streamlit with Folium for tactical mapping and multi-agent dispatch manifests.
 
 ## Files
 - `process_data.py`: The data pipeline script that ingests raw citations, clusters the coordinates, aggregates intensity, and produces the output matrix.
