@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { 
-  ShieldAlert, Activity, Cpu, Map as MapIcon, Layers, 
-  Crosshair, GitMerge, TrendingUp, AlertTriangle, Zap,
-  ChevronRight, RefreshCw, BarChart2, Sun, Moon,
-  Clock, Server
+  ShieldAlert, Activity, Cpu, Map as MapIcon, 
+  Crosshair, AlertTriangle,
+  RefreshCw, BarChart2,
+  Server
 } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, Marker, Circle } from 'react-leaflet';
 import L from 'leaflet';
@@ -17,7 +17,6 @@ const POIS = [
 ];
 
 // ─── UTILITY ──────────────────────────────────────────────────────────────────
-function clamp(val: number, min: number, max: number) { return Math.min(Math.max(val, min), max); }
 
 // ─── UI COMPONENTS ────────────────────────────────────────────────────────────
 function StatusStrip({ appState }: { appState: string }) {
@@ -37,7 +36,7 @@ function StatusStrip({ appState }: { appState: string }) {
   );
 }
 
-function TopBar({ cityStats, appState }: { cityStats: any, appState: string }) {
+function TopBar({ cityStats }: { cityStats: any }) {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -358,7 +357,7 @@ export default function App() {
   return (
     <div>
       <StatusStrip appState={appState} />
-      <TopBar cityStats={cityData.cityStats} appState={appState} />
+      <TopBar cityStats={cityData.cityStats} />
       <TickerStrip cityData={cityData} />
 
       <div className="main-grid">
@@ -513,7 +512,7 @@ export default function App() {
 
           {appState === "deployed" && (
             <div className="manifest-scroll">
-              {routes.map((h, i) => (
+              {routes.map((h: any, i: number) => (
                 <div key={`${h.id}-${i}`} className="manifest-row" style={{ animationDelay: `${i * 0.05}s` }}>
                   <div className="manifest-bar" />
                   <div className="manifest-content">
@@ -592,7 +591,7 @@ export default function App() {
           <div className="panel">
             <div className="panel-header"><BarChart2 className="w-3 h-3 inline mr-2" /> Chronic Registry (17-Week Trend)</div>
             <div>
-              {(cityData?.chronic_registry || []).slice(0, 4).map((r: any, i: number) => (
+              {(cityData?.chronic_registry || []).slice(0, 4).map((r: any) => (
                 <div key={r.id} className="registry-row">
                   <div className={`rank-medallion rank-${r.rank <= 3 ? r.rank : 'n'}`}>0{r.rank}</div>
                   <div className="registry-info">
