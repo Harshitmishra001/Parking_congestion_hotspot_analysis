@@ -9,29 +9,6 @@ import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, Marker, Circl
 import L from 'leaflet';
 
 // ─── STATIC CONSTANTS ────────────────────────────────────────────────────────
-const TIME_BLOCKS = ["Sunday_0400","Saturday_2200","Friday_1800","Monday_0800"];
-
-const TICKER_ITEMS = [
-  { id: 3,   block: "SUN_0400", delay: 6497, status: "CRITICAL" },
-  { id: 14,  block: "SUN_0400", delay: 216,  status: "HIGH"     },
-  { id: 31,  block: "SUN_0400", delay: 10,   status: "ACTIVE"   },
-  { id: 7,   block: "SAT_2200", delay: 4120, status: "CRITICAL" },
-  { id: 22,  block: "FRI_1800", delay: 890,  status: "HIGH"     },
-  { id: 45,  block: "MON_0800", delay: 340,  status: "HIGH"     },
-  { id: 88,  block: "WED_1200", delay: 122,  status: "ACTIVE"   },
-  { id: 103, block: "THU_0900", delay: 56,   status: "ACTIVE"   },
-  { id: 201, block: "SUN_0300", delay: 5201, status: "CRITICAL" },
-  { id: 316, block: "SAT_0500", delay: 4844, status: "CRITICAL" },
-];
-
-const CHRONIC_REGISTRY = [
-  { rank: 1, id: 3,   violations: 4330, conf: 1.00, peak: "SUN_0400", totalDelay: 6497,  rec: "Permanent barricade" },
-  { rank: 2, id: 201, violations: 3466, conf: 0.98, peak: "SUN_0300", totalDelay: 5201,  rec: "Permanent barricade" },
-  { rank: 3, id: 316, violations: 3228, conf: 0.96, peak: "SAT_0500", totalDelay: 4844,  rec: "Permanent barricade" },
-  { rank: 4, id: 7,   violations: 2901, conf: 0.95, peak: "SAT_2200", totalDelay: 4120,  rec: "Permanent barricade" },
-  { rank: 5, id: 98,  violations: 1100, conf: 0.88, peak: "MON_0800", totalDelay: 1240,  rec: "Regular patrol slot" },
-  { rank: 6, id: 22,  violations: 890,  conf: 0.82, peak: "FRI_1800", totalDelay: 890,   rec: "Regular patrol slot" },
-];
 
 const POIS = [
   { name: "Victoria General", lat: 12.9634, lon: 77.5755, type: "hospital", icon: "🏥" },
@@ -102,20 +79,25 @@ function TopBar({ cityStats, appState }: { cityStats: any, appState: string }) {
   );
 }
 
-function TickerStrip() {
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS];
+function TickerStrip({ cityData }: { cityData: any }) {
+  const topHotspots = [...(cityData?.hotspots || [])]
+    .sort((a, b) => b.delay - a.delay)
+    .slice(0, 10);
+    
+  const items = [...topHotspots, ...topHotspots, ...topHotspots];
   
   return (
     <div className="ticker-wrap">
       <div className="ticker-inner">
         {items.map((item, i) => {
-          let dotColor = item.status === "CRITICAL" ? "var(--alert)" : item.status === "HIGH" ? "var(--amber)" : "var(--signal)";
+          const status = item.delay > 1000 ? "CRITICAL" : (item.delay > 300 ? "HIGH" : "ACTIVE");
+          let dotColor = status === "CRITICAL" ? "var(--alert)" : status === "HIGH" ? "var(--amber)" : "var(--signal)";
           return (
             <div key={i} className="ticker-item">
               <span className="ticker-dot" style={{ background: dotColor, boxShadow: `0 0 6px ${dotColor}` }} />
               <span className="ticker-id">HS-{String(item.id).padStart(3,"0")}</span>
-              <span className="ticker-block">{item.block}</span>
-              <span className="ticker-delay" style={{ color: dotColor }}>{item.delay.toLocaleString()} MIN</span>
+              <span className="ticker-block">LIVE</span>
+              <span className="ticker-delay" style={{ color: dotColor }}>{Math.round(item.delay).toLocaleString()} MIN</span>
             </div>
           );
         })}
@@ -167,10 +149,11 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
 
         {/* Hotspots */}
         {hotspots.map(h => {
+          const maxDelay = Math.max(...hotspots.map(h => h.delay));
           const isDispatched = dispatched.includes(h.id);
-          const isCritical = h.delay > 1000; // All hotspots >1000 delay will pulse
+          const isWorst = h.delay === maxDelay && maxDelay > 0;
           let color = "#FF3B5C"; // Pink/Red default
-          if (isCritical) color = "#FF0000"; // Deep Red for critical
+          if (isWorst) color = "#FF0000"; // Deep Red for critical
           else if (h.delay > 300) color = "#FFB800"; // Orange/Amber
           
           if (isDispatched) color = "#00E5A0"; // Signal Green if handled
@@ -179,8 +162,8 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
 
           return (
             <React.Fragment key={h.id}>
-              {/* Sonar Rings for Critical Hotspots */}
-              {isCritical && !isDispatched && (
+              {/* Sonar Rings for Worst Hotspot */}
+              {isWorst && !isDispatched && (
                 <Marker position={[h.lat, h.lon]} icon={L.divIcon({
                   className: 'custom-pulse-icon',
                   html: `<div class="pulse-circle" style="width: 100px; height: 100px; background-color: rgba(255,0,0,0.3); border-radius: 50%;"></div>`,
@@ -234,6 +217,51 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
   );
 }
 
+// ─── BOOT SEQUENCE ──────────────────────────────────────────────────────────────
+const BootSequence = () => {
+  const [lines, setLines] = React.useState<string[]>([]);
+  const text = [
+    "INITIALIZING PREDICTIVE PARKING COMMAND CENTER...",
+    "TEAM: DESOLATE ERA | FLIPKART GRiD THEME 1",
+    "--------------------------------------------------",
+    "ARCHITECTURE BOOT SEQUENCE INITIATED.",
+    "Target: Bengaluru Traffic Grid (484 active nodes)",
+    "Engine: PuLP Integer Linear Programming (ILP)",
+    "Routing: Gravity-Based Heuristic (Distance Decay)",
+    "--------------------------------------------------",
+    "Connecting to Hugging Face Operations Research Engine...",
+    "Provisioning 16GB RAM / 2 vCPUs for spatial clustering.",
+    "Please stand by. Handshake in progress...",
+  ];
+
+  React.useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < text.length) { setLines(p => [...p, text[i]]); i++; }
+      else clearInterval(interval);
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#080C14] flex flex-col items-center justify-center font-mono p-6">
+      <div className="w-full max-w-2xl bg-[#0F1724] border border-[#1A2540] rounded-lg shadow-[0_0_40px_rgba(0,229,160,0.1)]">
+        <div className="flex items-center px-4 py-2 bg-[#0A1020] border-b border-[#1A2540] gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500"></div><div className="w-3 h-3 rounded-full bg-yellow-500"></div><div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <span className="ml-4 text-[10px] text-slate-500 tracking-widest uppercase">Desolate_Era_OS_v2.4</span>
+        </div>
+        <div className="p-6 min-h-[300px] text-[13px] text-[#00E5A0] leading-relaxed">
+          {lines.map((l, idx) => <div key={idx} className={l.includes('DESOLATE') ? 'text-white font-bold' : ''}>{l}</div>)}
+          <div className="mt-4 flex items-center gap-3 text-[#C8D6F0] opacity-70">
+            <div className="w-4 h-4 border-2 border-slate-500 border-t-[#00E5A0] rounded-full animate-spin"></div>
+            <span className="text-[11px] uppercase tracking-widest animate-pulse">Awaiting Server Handshake...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── MAIN APPLICATION ─────────────────────────────────────────────────────────
 export default function App() {
   const [appState, setAppState] = useState("idle"); // idle | analyzing | deployed
@@ -241,7 +269,7 @@ export default function App() {
   const [dispatchResults, setDispatchResults] = useState<any>(null);
   
   // Controls
-  const [timeBlock, setTimeBlock] = useState("Sunday_0400");
+  const [timeBlock, setTimeBlock] = useState("");
   const [officers, setOfficers] = useState(5);
   const [alpha, setAlpha] = useState(1.0);
   const [lambda, setLambda] = useState(0.15);
@@ -264,9 +292,14 @@ export default function App() {
   ];
 
   useEffect(() => {
-    fetch('http://localhost:8001/api/vitals')
+    fetch('https://heavenlydem0n-desolate-era-os.hf.space/api/vitals')
       .then(res => res.json())
-      .then(data => setCityData(data))
+      .then(data => {
+        setCityData(data);
+        if (data.time_blocks && data.time_blocks.length > 0) {
+          setTimeBlock(data.time_blocks[0]);
+        }
+      })
       .catch(err => console.error("API Error", err));
   }, []);
 
@@ -280,7 +313,7 @@ export default function App() {
     }, 400);
 
     try {
-      const res = await fetch('http://localhost:8001/api/dispatch', {
+      const res = await fetch('https://heavenlydem0n-desolate-era-os.hf.space/api/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -315,12 +348,7 @@ export default function App() {
   }
 
   if (!cityData) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--abyss)]">
-        <RefreshCw className="w-8 h-8 animate-spin text-[var(--signal)] mb-6" />
-        <div className="mono text-[var(--frost)] text-sm">BOOTING COMMAND CENTER...</div>
-      </div>
-    );
+    return <BootSequence />;
   }
 
   const twinData = dispatchResults?.twin_data || [];
@@ -331,7 +359,7 @@ export default function App() {
     <div>
       <StatusStrip appState={appState} />
       <TopBar cityStats={cityData.cityStats} appState={appState} />
-      <TickerStrip />
+      <TickerStrip cityData={cityData} />
 
       <div className="main-grid">
         {/* LEFT COLUMN: Map & Controls */}
@@ -342,7 +370,11 @@ export default function App() {
               <div>
                 <div className="ctrl-field-label">Time Block</div>
                 <select className="ctrl-select" value={timeBlock} onChange={e => { setTimeBlock(e.target.value); setAppState("idle"); }}>
-                  {TIME_BLOCKS.map(t => <option key={t} value={t}>{t}</option>)}
+                  {cityData?.time_blocks?.length ? (
+                    cityData.time_blocks.map((t: string) => <option key={t} value={t}>{t}</option>)
+                  ) : (
+                    <option value="">Loading...</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -560,7 +592,7 @@ export default function App() {
           <div className="panel">
             <div className="panel-header"><BarChart2 className="w-3 h-3 inline mr-2" /> Chronic Registry (17-Week Trend)</div>
             <div>
-              {CHRONIC_REGISTRY.slice(0, 4).map((r, i) => (
+              {(cityData?.chronic_registry || []).slice(0, 4).map((r: any, i: number) => (
                 <div key={r.id} className="registry-row">
                   <div className={`rank-medallion rank-${r.rank <= 3 ? r.rank : 'n'}`}>0{r.rank}</div>
                   <div className="registry-info">

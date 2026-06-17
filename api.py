@@ -190,9 +190,38 @@ def get_vitals():
     cols = ['id', 'lat', 'lon', 'delay', 'cost', 'conf', 'chronic', 'tag', 'critical', 'event']
     hotspots_list = df_to_records(unique_hotspots[cols])
     
+    time_blocks = sorted(master_df['time_block'].unique().tolist())
+    
+    # Filter for chronic offenders
+    chronic_df = master_df[master_df['is_chronic'] == True]
+    if not chronic_df.empty:
+        registry = chronic_df.groupby('hotspot_id').agg({
+            'estimated_delay_minutes': 'sum',
+            'confidence_score': 'mean',
+            'time_block': lambda x: x.mode()[0] if not x.mode().empty else 'N/A'
+        }).reset_index()
+        # Rename columns to match frontend expectations
+        registry.rename(columns={
+            'hotspot_id': 'id', 
+            'estimated_delay_minutes': 'totalDelay',
+            'confidence_score': 'conf',
+            'time_block': 'peak'
+        }, inplace=True)
+        registry = registry.sort_values('totalDelay', ascending=False).head(6)
+        # Add rank and recommendation
+        registry['rank'] = range(1, len(registry) + 1)
+        registry['violations'] = (registry['totalDelay'] / 1.5).astype(int) # Mock violations based on delay
+        registry['rec'] = registry['conf'].apply(lambda c: "Permanent barricade" if c >= 0.90 else "Regular patrol slot")
+        
+        chronic_registry_data = registry.replace({np.nan: None}).to_dict(orient='records')
+    else:
+        chronic_registry_data = []
+    
     return {
         "cityStats": city_stats,
-        "hotspots": hotspots_list
+        "hotspots": hotspots_list,
+        "time_blocks": time_blocks,
+        "chronic_registry": chronic_registry_data
     }
 
 @app.post("/api/dispatch")

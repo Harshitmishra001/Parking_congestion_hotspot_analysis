@@ -1,7 +1,7 @@
-streamlit
+fastapi
+uvicorn
 pandas
-pulp
-folium
-streamlit-folium
-plotly
+numpy
 scikit-learn
+pulp
+pydantic
