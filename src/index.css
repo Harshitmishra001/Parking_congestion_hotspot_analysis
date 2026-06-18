@@ -225,14 +225,25 @@ body, #root {
 
 /* Advanced expander */
 .adv-expander {
-  font-size: 10px; color: var(--slate);
-  cursor: pointer; letter-spacing: 0.05em;
-  padding: 4px 8px; border: 1px solid var(--border);
-  border-radius: 4px; background: transparent;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--slate);
+  background: #080C14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
   transition: color 0.2s, border-color 0.2s;
   white-space: nowrap;
 }
-.adv-expander:hover { color: var(--frost); border-color: var(--elevated); }
+.adv-expander[data-open="true"] {
+  color: var(--frost);
+  border-color: #2A3A5A;
+}
+.adv-expander:hover {
+  color: var(--frost);
+}
 
 /* Execute button */
 .execute-btn {
@@ -273,7 +284,7 @@ body, #root {
 /* ── MAIN LAYOUT ── */
 .main-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 13fr 7fr;
   grid-template-rows: auto auto;
   gap: 16px;
   padding: 16px 24px;
@@ -385,22 +396,23 @@ body, #root {
 
 .manifest-row {
   border: 1px solid var(--border);
-  border-radius: 7px;
-  margin-bottom: 8px;
+  border-radius: 8px;
+  margin-bottom: 10px;
   overflow: hidden;
   display: flex;
   transition: border-color 0.2s;
   animation: fadeUp 0.35s ease forwards;
+  padding: 0;
 }
 .manifest-row:hover { border-color: rgba(0,229,160,0.35); }
 
 /* Proportional left bar */
 .manifest-bar {
-  width: 3px; flex-shrink: 0;
+  width: 4px; flex-shrink: 0;
   background: var(--signal);
 }
 
-.manifest-content { flex: 1; padding: 11px 13px; }
+.manifest-content { flex: 1; padding: 13px 15px; }
 
 .manifest-row-top {
   display: flex; align-items: flex-start;
@@ -417,8 +429,8 @@ body, #root {
 
 .manifest-delay {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 22px; font-weight: 700; color: var(--signal);
-  line-height: 1; margin-bottom: 4px;
+  font-size: 24px; font-weight: 700; color: var(--signal);
+  line-height: 1; margin-bottom: 6px;
 }
 .manifest-delay span {
   font-size: 10px; color: var(--slate); font-weight: 400; margin-left: 3px;
@@ -435,9 +447,10 @@ body, #root {
 }
 
 .manifest-meta {
-  display: flex; gap: 10px;
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 6px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; color: var(--slate);
+  font-size: 10px; color: #8B949E;
 }
 .manifest-pscore { color: var(--amber); font-weight: 600; }
 

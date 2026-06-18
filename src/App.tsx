@@ -207,9 +207,20 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
         })}
 
         {/* Depot */}
-        <CircleMarker center={DEPOT} radius={8} pathOptions={{ color: '#fff', weight: 2, fillColor: '#FFB800', fillOpacity: 1 }}>
-            <Tooltip permanent direction="bottom" offset={[0, 10]} className="bg-transparent border-none text-[#FFB800] font-bold shadow-none text-xs">HQ</Tooltip>
-        </CircleMarker>
+        <Marker position={DEPOT} icon={L.divIcon({
+          className: 'depot-marker',
+          html: `
+            <div style="background: transparent; border: none; box-shadow: none;">
+              <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,184,0,0.12); border: 1px solid rgba(255,184,0,0.3); top: -8px; left: -8px;"></div>
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #FFB800; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 0 14px rgba(255,184,0,0.7), 0 0 28px rgba(255,184,0,0.35), 0 0 0 4px rgba(255,184,0,0.15); position: relative; z-index: 2;">🏛</div>
+              <div style="position: absolute; top: 32px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; color: #FFB800; letter-spacing: 0.1em; text-shadow: 0 0 8px rgba(255,184,0,0.8); background: rgba(8,12,20,0.8); padding: 1px 5px; border-radius: 2px;">HQ DEPOT</div>
+            </div>
+          `,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })}>
+            <Tooltip direction="top" offset={[0, -10]} className="bg-[#0F1724] text-[#C8D6F0] border-[#FFB800] border font-sans text-[11px] px-2 py-1">🏛 Central Dispatch Depot — Origin of all officer routes</Tooltip>
+        </Marker>
 
       </MapContainer>
     </div>
@@ -296,7 +307,8 @@ export default function App() {
       .then(data => {
         setCityData(data);
         if (data.time_blocks && data.time_blocks.length > 0) {
-          setTimeBlock(data.time_blocks[0]);
+          const defaultBlock = "Sunday_0400";
+          setTimeBlock(data.time_blocks.includes(defaultBlock) ? defaultBlock : data.time_blocks[0]);
         }
       })
       .catch(err => console.error("API Error", err));
@@ -384,40 +396,45 @@ export default function App() {
                 <div className="ctrl-field-label">Officers Available</div>
                 <div className="flex items-end gap-3">
                   <div className="ctrl-big-value">{String(officers).padStart(2,'0')}</div>
-                  <input type="range" min="1" max="20" value={officers} onChange={e => { setOfficers(+e.target.value); setAppState("idle"); }} 
-                         className="w-32 accent-[var(--signal)] mb-2" />
+                  <div className="flex flex-col w-32 mb-1">
+                    <input type="range" min="1" max="20" value={officers} onChange={e => { setOfficers(+e.target.value); setAppState("idle"); }} 
+                           className="w-full accent-[var(--signal)] mb-1" />
+                    <div className="flex justify-between text-[9px] mono text-[var(--slate)] px-[2px]">
+                      <span>MIN: 1</span><span>MAX: 20</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="ml-4">
-                <button className="adv-expander" onClick={() => setShowAdvanced(!showAdvanced)}>
-                  {showAdvanced ? "Hide Routing Logic" : "Advanced Routing Logic"}
+              <div className="ml-4 flex items-center h-full relative">
+                <button className="adv-expander" onClick={() => setShowAdvanced(!showAdvanced)} data-open={showAdvanced}>
+                  ⚙ Advanced Routing ›
                 </button>
-              </div>
 
-              {showAdvanced && (
-                <div className="flex gap-6 ml-4 animate-[fadeUp_0.2s_ease-out]">
-                  <div>
-                    <div className="ctrl-field-label">Gravity Alpha</div>
-                    <input type="range" min="0.5" max="2.0" step="0.1" value={alpha} onChange={e => { setAlpha(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
+                {showAdvanced && (
+                  <div className="absolute top-[52px] left-0 bg-[#080C14] border border-[var(--border)] border-t-0 rounded-b-[6px] p-4 flex gap-6 z-50 shadow-2xl animate-[fadeUp_0.2s_ease-out]">
+                    <div>
+                      <div className="ctrl-field-label">Distance Decay α</div>
+                      <input type="range" min="0.5" max="2.0" step="0.1" value={alpha} onChange={e => { setAlpha(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
+                    </div>
+                    <div>
+                      <div className="ctrl-field-label">Urgency Growth λ</div>
+                      <input type="range" min="0.0" max="0.5" step="0.05" value={lambda} onChange={e => { setLambda(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
+                    </div>
+                    <div className="flex flex-col gap-2 mt-1">
+                      <label className="checkbox-container">
+                        <input type="checkbox" checked={enableCritical} onChange={e => {setEnableCritical(e.target.checked); setAppState("idle")}} />
+                        <span className="checkbox-custom"></span>
+                        <span className="ctrl-field-label !mb-0 text-white">HOSPITALS/SCHOOLS</span>
+                      </label>
+                      <label className="checkbox-container">
+                        <input type="checkbox" checked={enableEvents} onChange={e => {setEnableEvents(e.target.checked); setAppState("idle")}} />
+                        <span className="checkbox-custom"></span>
+                        <span className="ctrl-field-label !mb-0 text-white">EVENT OVERLAYS</span>
+                      </label>
+                    </div>
                   </div>
-                  <div>
-                    <div className="ctrl-field-label">Urgency Lambda</div>
-                    <input type="range" min="0.0" max="0.5" step="0.05" value={lambda} onChange={e => { setLambda(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
-                  </div>
-                  <div className="flex flex-col gap-2 mt-1">
-                    <label className="checkbox-container">
-                      <input type="checkbox" checked={enableCritical} onChange={e => {setEnableCritical(e.target.checked); setAppState("idle")}} />
-                      <span className="checkbox-custom"></span>
-                      <span className="ctrl-field-label !mb-0 text-white">HOSPITALS/SCHOOLS</span>
-                    </label>
-                    <label className="checkbox-container">
-                      <input type="checkbox" checked={enableEvents} onChange={e => {setEnableEvents(e.target.checked); setAppState("idle")}} />
-                      <span className="checkbox-custom"></span>
-                      <span className="ctrl-field-label !mb-0 text-white">EVENT OVERLAYS</span>
-                    </label>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Zone 3 */}
@@ -512,25 +529,41 @@ export default function App() {
 
           {appState === "deployed" && (
             <div className="manifest-scroll">
-              {routes.map((h: any, i: number) => (
-                <div key={`${h.id}-${i}`} className="manifest-row" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="manifest-bar" />
+              {routes.map((h: any, i: number) => {
+                const totalDelay = Math.max(1, routes.reduce((sum: number, r: any) => sum + r.delay, 0));
+                const maxDelay = Math.max(1, Math.max(...routes.map((r: any) => r.delay)));
+                const maxCost = Math.max(1, Math.max(...routes.map((r: any) => r.cost || 1)));
+                const proportion = h.delay / totalDelay;
+                const barH = Math.floor(8 + proportion * 64);
+                const barOpacity = (0.35 + (h.delay / maxDelay) * 0.65).toFixed(2);
+                
+                const color = "var(--signal)";
+
+                return (
+                <div key={`${h.id}-${i}`} className="manifest-row" style={{ animationDelay: `${i * 0.05}s`, minHeight: `${barH + 56}px` }}>
+                  <div className="manifest-bar" style={{ opacity: barOpacity, background: color, width: '4px', minHeight: `${barH + 56}px` }} />
                   <div className="manifest-content">
                     <div className="manifest-row-top">
                       <div>
-                        <div className="manifest-stop-id">OFFICER 0{h.officer_id + 1} — STOP 0{h.route_sequence}</div>
+                        <div className="manifest-stop-id" style={{ color: color, opacity: 0.8, fontWeight: 700 }}>
+                          STOP #{String(h.route_sequence).padStart(2, '0')} —
+                        </div>
                         <div className="manifest-hs-id">HS-{String(h.id).padStart(3,"0")}</div>
                       </div>
                       <div className="manifest-badges">
-                        {h.critical && <span className="badge badge-critical">{h.critical.split(" ")[1]}</span>}
-                        {h.event && <span className="badge badge-event">{h.event.split(" ")[1]}</span>}
-                        {h.tag?.includes("Repeat") ? <span className="badge badge-repeat">CHRONIC</span> : <span className="badge badge-anomaly">ANOMALY</span>}
+                        {h.critical && <span className="badge badge-critical" style={{ background: 'rgba(255,0,85,0.15)', color: '#FF0055', border: '1px solid #FF0055' }}>{h.critical.split(" ")[1] || h.critical}</span>}
+                        {h.event && <span className="badge badge-event" style={{ background: 'rgba(255,140,0,0.15)', color: '#FF8C00', border: '1px solid #FF8C00' }}>{h.event.split(" ")[1] || h.event}</span>}
+                        {h.tag?.includes("Repeat") ? <span className="badge badge-repeat" style={{ background: '#FF444422', color: '#FF4444', border: '1px solid #FF4444' }}>REPEAT</span> : <span className="badge badge-anomaly" style={{ background: '#4A608022', color: '#4A6080', border: '1px solid #4A6080' }}>ANOMALY</span>}
                       </div>
                     </div>
-                    <div className="manifest-delay">{h.delay.toLocaleString()}<span>MINS</span></div>
                     
-                    <div className="p-bar-wrap">
-                      <div className="p-bar-fill" style={{ width: `${Math.min(100, (h.delay/6000)*100)}%` }} />
+                    <div className="manifest-delay" style={{ color: color }}>
+                      {h.delay.toLocaleString()}
+                      <span style={{ letterSpacing: '1px' }}>MINS CLEARED</span>
+                    </div>
+                    
+                    <div className="p-bar-wrap" style={{ height: '3px', borderRadius: '2px', marginBottom: '8px' }}>
+                      <div className="p-bar-fill" style={{ width: `${Math.min(100, (h.cost/maxCost)*100)}%`, background: `linear-gradient(90deg, ${color}, #0066FF)`, borderRadius: '2px' }} />
                     </div>
                     
                     <div className="manifest-meta">
@@ -540,7 +573,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>

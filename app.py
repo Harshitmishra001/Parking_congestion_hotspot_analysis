@@ -42,6 +42,19 @@ body, .stApp { background-color: #0D1117; color: #E6EDF3; }
 .chronic-badge { background: #FF444422; color: #FF4444;
     border: 1px solid #FF4444; border-radius: 4px;
     padding: 2px 8px; font-size: 0.75rem; font-weight: 600; }
+.manifest-row {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.manifest-meta {
+  font-size: 10px;
+  gap: 14px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.manifest-delay {
+  font-size: 24px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -157,17 +170,65 @@ c5.markdown(f"""
 
 st.sidebar.header("🎛️ Dispatch Controls")
 
-time_blocks_sorted = sorted(master_df["time_block"].unique().tolist())
-default_idx = (
-    time_blocks_sorted.index("Sunday_0400")
-    if "Sunday_0400" in time_blocks_sorted
-    else 0
-)
+st.sidebar.markdown("""
+<style>
+/* Zone dividers inside control bar */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+  border-right: 1px solid #1E2D45 !important;
+  padding: 12px 20px !important;
+  background: #0F1724;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child {
+  border-right: none !important;
+  background: #0F1724;
+}
+/* Officer big number display */
+.officer-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 700;
+  color: #C8D6F0;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+/* Slider min/max labels */
+.slider-bounds {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #4A6080;
+  margin-top: 2px;
+  padding: 0 2px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+_default_block = "Sunday_0400"
+_tb_options = sorted(master_df['time_block'].unique().tolist())
+_tb_default_idx = _tb_options.index(_default_block) if _default_block in _tb_options else 0
 
 selected_tb = st.sidebar.selectbox(
-    "Select Time Block", time_blocks_sorted, index=default_idx
+    label="TIME BLOCK",
+    options=_tb_options,
+    index=_tb_default_idx,
+    key="ctrl_time_block",
+    label_visibility="collapsed"
 )
+
 available_officers = st.sidebar.slider("Available Officers", 1, 20, 5)
+
+st.sidebar.markdown("""
+<div class="slider-bounds">
+  <span>MIN: 1</span>
+  <span>MAX: 20</span>
+</div>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown(f"""
+<div class="officer-display">{available_officers:02d}</div>
+""", unsafe_allow_html=True)
+
 run_optimiser = st.sidebar.button("⚡ Generate Deployment Plan")
 
 st.sidebar.markdown("""
@@ -180,38 +241,62 @@ your officer budget.
 """)
 
 # ─── MODULE A — SIDEBAR ROUTING PARAMETERS ──────────────────────────────────
-st.sidebar.markdown("---")
-st.sidebar.markdown("### \U0001f9ed Routing Parameters")
-alpha = st.sidebar.slider(
-    "Distance Decay Factor (\u03b1)",
-    min_value=0.5, max_value=2.0,
-    value=1.0, step=0.1,
-    help="Higher \u03b1 = officers stay in tighter local zones. Lower \u03b1 = willing to cross city for high-impact targets."
-)
-lambda_ = st.sidebar.slider(
-    "Urgency Growth Rate (\u03bb)",
-    min_value=0.0, max_value=0.5,
-    value=0.15, step=0.05,
-    help="How fast uncleared hotspot severity compounds per hour. 0.15 = 15% increase per hour."
-)
+with st.sidebar.expander("⚙ Advanced Routing  ›", expanded=False):
+    st.markdown("""
+    <style>
+    details[data-testid="stExpander"] > summary {
+      font-family: 'Space Grotesk', sans-serif !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.08em !important;
+      color: #4A6080 !important;
+      border: 1px solid #1E2D45 !important;
+      border-radius: 6px !important;
+      padding: 8px 12px !important;
+      background: #080C14 !important;
+      transition: color 0.2s, border-color 0.2s !important;
+    }
+    details[data-testid="stExpander"][open] > summary {
+      color: #C8D6F0 !important;
+      border-color: #2A3A5A !important;
+    }
+    details[data-testid="stExpander"] > summary:hover {
+      color: #C8D6F0 !important;
+    }
+    details[data-testid="stExpander"] > div {
+      background: #080C14 !important;
+      border: 1px solid #1E2D45 !important;
+      border-top: none !important;
+      border-radius: 0 0 6px 6px !important;
+      padding: 12px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# ─── SIDEBAR: EMERGENCY PROTOCOLS ────────────────────────────────────────────
-st.sidebar.markdown("---")
-st.sidebar.markdown("### \U0001f691 Emergency Protocols")
-enable_critical_override = st.sidebar.checkbox(
-    "Enable Critical Infrastructure Override",
-    value=False,
-    help="Hospitals within 500m: 3.0x impact multiplier. Schools within 500m: 1.5x impact multiplier."
-)
-enable_event_context = st.sidebar.checkbox(
-    "Overlay Event Context (Theme 2)",
-    value=False,
-    help=(
-        "Flags hotspots inside Metro Construction (1.5x weight boost) "
-        "or Rally zones (1.3x weight boost). Provides Explainable AI "
-        "context for why a hotspot is congested."
+    alpha   = st.slider("Distance Decay α", 0.5, 2.0, 1.0, 0.1, key="ctrl_alpha",
+                        help="Higher = officers stay in tighter local zones")
+    lambda_ = st.slider("Urgency Growth λ", 0.0, 0.5, 0.15, 0.05, key="ctrl_lambda",
+                        help="How fast uncleared severity compounds per hour")
+    st.markdown("---")
+    enable_critical_override = st.checkbox(
+        "🚑 Hospitals / Schools Override",
+        value=False, key="ctrl_critical",
+        help="Hospitals 3x · Schools 1.5x impact multiplier"
     )
-)
+    enable_event_context = st.checkbox(
+        "🚧 Event Context Overlays",
+        value=False, key="ctrl_events",
+        help="Metro Construction 1.5x · Rally zones 1.3x"
+    )
+
+st.sidebar.markdown("""
+<style>
+/* Prevent expander from collapsing into control bar */
+details[data-testid="stExpander"] {
+  margin-top: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 ###############################################################################
 # MODULE B — CONSTANTS AND HELPER FUNCTIONS
@@ -817,7 +902,7 @@ if "plan" in st.session_state:
     # ─────────────────────────────────────────────────────────────────────
     # SECTION 4 — MAP (left) + MISSION BRIEF (right)
     # ─────────────────────────────────────────────────────────────────────
-    map_col, brief_col = st.columns([3, 2])
+    map_col, brief_col = st.columns([13, 7])
 
     dispatched_ids = set(dispatch_manifest["hotspot_id"].tolist())
 
@@ -825,12 +910,16 @@ if "plan" in st.session_state:
         st.markdown("<div class='section-header'>🗺️ Tactical Deployment Map</div>",
                     unsafe_allow_html=True)
 
-        # Clean dark tile provider
         m = folium.Map(
-            location=[12.97, 77.59],
+            location=[12.9716, 77.5946],
             zoom_start=12,
-            tiles="cartodbdark_matter",
+            tiles="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
+            attr="© OpenStreetMap contributors © CARTO",
+            prefer_canvas=True,
+            zoom_control=False
         )
+        from folium.plugins import Fullscreen
+        Fullscreen(position='topright', force_separate_button=True).add_to(m)
 
         # Identify the single worst hotspot for the pulsing ring
         worst_row_idx = slot_df_r["estimated_delay_minutes"].idxmax()
@@ -948,18 +1037,74 @@ if "plan" in st.session_state:
             # Central Depot Marker
             folium.Marker(
                 location=[DEPOT_LAT, DEPOT_LON],
-                icon=folium.DivIcon(html="""
-                    <div style='
-                        background:#FFB800; color:#000;
-                        border:3px solid #fff; border-radius:50%;
-                        width:32px; height:32px;
-                        display:flex; align-items:center; justify-content:center;
-                        font-size:16px; font-weight:900;
-                        box-shadow: 0 0 12px #FFB800;
-                    '>&#127963;</div>
-                """),
-                popup=folium.Popup("Central Dispatch Depot", max_width=200),
-                tooltip="Central Dispatch Depot"
+                icon=folium.DivIcon(
+                    html="""
+                    <div style="
+                      background: transparent !important;
+                      border: none !important;
+                      box-shadow: none !important;
+                    ">
+                      <!-- Outer glow ring -->
+                      <div style="
+                        position: absolute;
+                        width: 44px; height: 44px;
+                        border-radius: 50%;
+                        background: rgba(255,184,0,0.12);
+                        border: 1px solid rgba(255,184,0,0.3);
+                        top: -8px; left: -8px;
+                      "></div>
+                      <!-- Main depot marker -->
+                      <div style="
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 50%;
+                        background: #FFB800;
+                        border: 2px solid #ffffff;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                        box-shadow: 0 0 14px rgba(255,184,0,0.7),
+                                    0 0 28px rgba(255,184,0,0.35),
+                                    0 0 0 4px rgba(255,184,0,0.15);
+                        position: relative;
+                        z-index: 2;
+                      ">🏛</div>
+                      <!-- HQ label below -->
+                      <div style="
+                        position: absolute;
+                        top: 32px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        white-space: nowrap;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 8px;
+                        font-weight: 700;
+                        color: #FFB800;
+                        letter-spacing: 0.1em;
+                        text-shadow: 0 0 8px rgba(255,184,0,0.8);
+                        background: rgba(8,12,20,0.8);
+                        padding: 1px 5px;
+                        border-radius: 2px;
+                      ">HQ DEPOT</div>
+                    </div>
+                    """,
+                    icon_size=(28, 28),
+                    icon_anchor=(14, 14),
+                    class_name="depot-marker"
+                ),
+                tooltip=folium.Tooltip(
+                    text="🏛 Central Dispatch Depot — Origin of all officer routes",
+                    style=(
+                        "font-family: 'Space Grotesk', sans-serif;"
+                        "font-size: 11px;"
+                        "background: #0F1724;"
+                        "color: #C8D6F0;"
+                        "border: 1px solid #FFB800;"
+                        "border-radius: 6px;"
+                        "padding: 6px 10px;"
+                    )
+                )
             ).add_to(m)
 
             # Route PolyLines per officer
@@ -1089,6 +1234,22 @@ if "plan" in st.session_state:
             <span style="color:#FFD700;">&#11044;</span> School Zone
         </div>
         """
+        
+        from folium import Element
+        m.get_root().html.add_child(Element("""
+        <style>
+        /* Override Leaflet's default white background on DivIcon */
+        .depot-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+        .leaflet-div-icon {
+          background: transparent !important;
+          border: none !important;
+        }
+        </style>
+        """))
+        
         m.get_root().html.add_child(folium.Element(legend_html))
 
         folium.LayerControl().add_to(m)
@@ -1120,65 +1281,118 @@ if "plan" in st.session_state:
                 )
                 st.markdown(header_html, unsafe_allow_html=True)
 
-                for _, row in officer_route.iterrows():
-                    has_critical = (
-                        'critical_tag' in row.index and
-                        row['critical_tag'] is not None and
-                        pd.notnull(row['critical_tag'])
-                    )
-                    has_chronic = (
-                        'chronicity_label' in row.index and
-                        pd.notnull(row.get('chronicity_label'))
-                    )
-                    critical_html = (
-                        f"<span class='chronic-badge' style='"
-                        f"background:rgba(255,0,85,0.15); color:#FF0055; "
-                        f"border:1px solid #FF0055;'>{row['critical_tag']}</span>"
-                    ) if has_critical else ""
-                    chronic_html = (
-                        f"<span class='chronic-badge'>{row['chronicity_label']}</span>"
-                    ) if has_chronic else ""
-                    has_event = (
-                        'event_context' in row.index and
-                        row['event_context'] is not None and
-                        pd.notnull(row['event_context'])
-                    )
+                _total_delay_in_manifest = rm['estimated_delay_minutes'].sum()
+                _max_delay_in_manifest   = rm['estimated_delay_minutes'].max()
+
+                for i, (_, row) in enumerate(
+                    officer_route.sort_values('estimated_delay_minutes', ascending=False).iterrows()
+                ):
+                    delay      = float(row['estimated_delay_minutes'])
+                    proportion = delay / max(_total_delay_in_manifest, 1)
+
+                    # Bar height: 8px minimum, 72px maximum, proportional to delay share
+                    bar_h = int(8 + proportion * 64)
+
+                    # Bar opacity: encodes individual severity
+                    bar_opacity = round(0.35 + (delay / max(_max_delay_in_manifest, 1)) * 0.65, 2)
+
+                    # P-score bar width (normalized to max P-score in manifest)
+                    _max_pscore = rm.get('priority_score_calculated', pd.Series([1.0])).max()
+                    pscore    = float(row.get('priority_score_calculated', 0))
+                    p_bar_pct = round((pscore / max(_max_pscore, 1)) * 100)
+
+                    # Badge assembly — priority order: critical → event → chronic
+                    badges_html = ""
+                    if 'critical_tag' in row.index and pd.notnull(row.get('critical_tag', None)):
+                        badges_html += f'<span class="badge badge-critical" style="background:rgba(255,0,85,0.15); color:#FF0055; border:1px solid #FF0055; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">{row["critical_tag"]}</span> '
+                    if 'event_context' in row.index and pd.notnull(row.get('event_context', None)):
+                        badges_html += f'<span class="badge badge-event" style="background:rgba(255,140,0,0.15); color:#FF8C00; border:1px solid #FF8C00; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">{row["event_context"]}</span> '
                     
-                    event_html = (
-                        f"<span class='chronic-badge' style='"
-                        f"background:rgba(255,140,0,0.15); "
-                        f"color:#FF8C00; "
-                        f"border:1px solid #FF8C00;'>"
-                        f"{row['event_context']}</span>"
-                    ) if has_event else ""
+                    is_chronic = bool(row.get('is_chronic', False)) if 'is_chronic' in row.index else (row.get('chronicity_label') == "🔴 Repeat Offender")
+                    if is_chronic:
+                        badges_html += '<span class="badge badge-repeat" style="background:#FF444422; color:#FF4444; border:1px solid #FF4444; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">REPEAT</span> '
+                    else:
+                        badges_html += '<span class="badge badge-anomaly" style="background:#4A608022; color:#4A6080; border:1px solid #4A6080; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">ANOMALY</span> '
 
-                    mult_display = ""
-                    total_mult = row.get('critical_mult', 1.0) * row.get('event_weight_mult', 1.0)
-                    if total_mult > 1.0:
-                        mult_display = (
-                            f"<span style='color:#FF0055; font-size:0.8rem; font-weight:600;'>"
-                            f"\u26a1 {total_mult}x Override Applied \u2014 "
-                            f"Base: {row['estimated_delay_minutes']:.0f} \u2192 "
-                            f"Effective: {row['effective_delay_minutes']:.0f} mins</span>"
-                        )
+                    officer_num = int(row.get('officer_id', 0)) + 1
+                    stop_num    = int(row.get('route_sequence', i + 1))
+                    hs_id       = int(row['hotspot_id'])
+                    cost        = int(row['resource_cost'])
+                    conf        = float(row['confidence_score'])
+                    dist        = float(row.get('distance_from_prev_km', 0))
 
-                    card_html = (
-                        f"<div class='dispatch-row' style='margin-left:16px; border-left-color:{color};'>"
-                        f"<div style='display:flex; flex-direction:column; gap:4px;'>"
-                        f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                        f"<span style='font-weight:700;'>Stop #{int(row['route_sequence'])} \u2014 Hotspot {int(row['hotspot_id'])}</span>"
-                        f"<div style='display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;'>{critical_html}{event_html}{chronic_html}</div>"
-                        f"</div>{mult_display}</div>"
-                        f"<div style='color:{color}; font-size:1.3rem; font-weight:700; margin:4px 0;'>"
-                        f"{row['estimated_delay_minutes']:.0f} mins cleared</div>"
-                        f"<div style='color:#8B949E; font-size:0.82rem;'>"
-                        f"P-Score: <b style='color:#fff'>{row['priority_score_calculated']}</b> &nbsp;|&nbsp; "
-                        f"Dist from prev: {row['distance_from_prev_km']} km &nbsp;|&nbsp; "
-                        f"Urgency: {row['time_elapsed_hours']:.1f} hrs &nbsp;|&nbsp; "
-                        f"Conf: {row['confidence_score']:.0%}</div>"
-                        f"</div>"
-                    )
-                    st.markdown(card_html, unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="manifest-row" style="
+                      display: flex;
+                      background: #0F1724;
+                      border: 1px solid #1E2D45;
+                      border-radius: 8px;
+                      margin-bottom: 10px;
+                      overflow: hidden;
+                      min-height: {bar_h + 56}px;
+                      transition: border-color 0.2s;
+                    ">
+                      <!-- PROPORTIONAL LEFT BAR -->
+                      <div style="
+                        width: 4px;
+                        min-height: {bar_h + 56}px;
+                        background: {color};
+                        opacity: {bar_opacity};
+                        flex-shrink: 0;
+                      "></div>
+
+                      <!-- CARD CONTENT -->
+                      <div style="flex: 1; padding: 13px 15px;">
+
+                        <!-- TOP ROW: stop ID + badges -->
+                        <div style="display:flex; justify-content:space-between;
+                                    align-items:flex-start; margin-bottom:7px;">
+                          <div>
+                            <span style="font-family:'JetBrains Mono',monospace;
+                                         font-size:10px; font-weight:700; color:{color}; opacity:0.8;">
+                              STOP #{stop_num:02d} —
+                            </span>
+                            <span style="font-size:13px; font-weight:700; color:#C8D6F0;">
+                              HS-{hs_id:03d}
+                            </span>
+                          </div>
+                          <div style="display:flex; gap:4px; flex-wrap:wrap;
+                                      justify-content:flex-end;">
+                            {badges_html}
+                          </div>
+                        </div>
+
+                        <!-- DELAY NUMBER -->
+                        <div style="
+                          font-family:'JetBrains Mono',monospace;
+                          font-size:24px; font-weight:700; color:{color};
+                          line-height:1; margin-bottom:6px;
+                        ">
+                          {int(delay):,}
+                          <span style="font-size:10px; color:#4A6080;
+                                       font-weight:400; margin-left:3px; letter-spacing:1px;">MINS CLEARED</span>
+                        </div>
+
+                        <!-- P-SCORE BAR -->
+                        <div style="height:3px; background:#1E2D45; border-radius:2px;
+                                    margin-bottom:8px; overflow:hidden;">
+                          <div style="height:100%; width:{p_bar_pct}%; border-radius:2px;
+                                      background:linear-gradient(90deg,{color},#0066FF);"></div>
+                        </div>
+
+                        <!-- META ROW -->
+                        <div class="manifest-meta" style="display:flex; gap:14px; flex-wrap:wrap;
+                                    font-family:'JetBrains Mono',monospace;
+                                    font-size:10px; color:#8B949E; margin-top:6px;">
+                          <span>👮 {cost} OFF</span>
+                          <span>📊 {conf:.0%} CONF</span>
+                          <span style="color:#FFB800; font-weight:700;">P={pscore:.1f}</span>
+                          <span>📍 {dist:.1f}km</span>
+                        </div>
+
+                      </div>
+                    </div>
+                    """, unsafe_allow_html=True)
         else:
             st.markdown("<div class='section-header'>\U0001f3af Officer Deployment Manifest</div>",
                         unsafe_allow_html=True)
