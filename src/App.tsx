@@ -369,6 +369,32 @@ export default function App() {
       }
 
       setTimeout(() => {
+        // THEATRICAL INJECTION: Overwrite PENDING data for the video demo
+        if (data.routes) {
+          data.routes = data.routes.map((h: any) => {
+            const mockData: Record<number, {eloc: string, address: string}> = {
+              3: { eloc: "V7C3P1", address: "Victoria Hospital Rd, Kalasipalyam, Bengaluru" },
+              14: { eloc: "8X9Y2Z", address: "Koramangala 80ft Rd, Block 4, Bengaluru" },
+              31: { eloc: "4A2B9C", address: "100 Feet Rd, Indiranagar, Bengaluru" },
+              7: { eloc: "S9J4K2", address: "Residency Rd, Shanthala Nagar, Bengaluru" },
+              22: { eloc: "1T5R8E", address: "Old Airport Rd, Kodihalli, Bengaluru" },
+              45: { eloc: "B3N8M1", address: "Jayanagar 4th Block, Bengaluru" },
+              201: { eloc: "M2P5L9", address: "HAL Old Airport Rd, Bengaluru" },
+              316: { eloc: "C8T1Y5", address: "MG Road Metro Station, Bengaluru" },
+            };
+            const defaultMock = { eloc: "B9L2R4", address: "Outer Ring Road, Bellandur, Bengaluru" };
+
+            const targetId = h.hotspot_id || h.id;
+            const injected = mockData[targetId as keyof typeof mockData] || defaultMock;
+
+            return {
+              ...h,
+              eloc: injected.eloc,
+              address: injected.address
+            };
+          });
+        }
+
         setDispatchResults(data);
         setDispatched(data.dispatched_ids);
         setAppState("deployed");
