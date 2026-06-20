@@ -18,6 +18,20 @@ const POIS = [
 
 // ─── UTILITY ──────────────────────────────────────────────────────────────────
 
+function getElocDisplay(eloc?: string): { label: string; isPending: boolean } {
+  if (!eloc || eloc === "UNKNOWN" || eloc === "PENDING") {
+    return { label: "PENDING", isPending: true };
+  }
+  return { label: eloc, isPending: false };
+}
+
+function getAddressDisplay(address?: string): string {
+  if (!address || address.trim().length === 0 || address === "Geocoding unavailable") {
+    return "Bengaluru Grid Sector";
+  }
+  return address;
+}
+
 // ─── UI COMPONENTS ────────────────────────────────────────────────────────────
 function StatusStrip({ appState }: { appState: string }) {
   let cls = "idle";
@@ -556,7 +570,36 @@ export default function App() {
                         <div className="manifest-stop-id" style={{ color: color, opacity: 0.8, fontWeight: 700 }}>
                           STOP #{String(h.route_sequence).padStart(2, '0')} —
                         </div>
-                        <div className="manifest-hs-id">HS-{String(h.id).padStart(3,"0")}</div>
+                        <div className="flex flex-col mb-1">
+                          <div className="flex items-center gap-2 text-sm text-[#C8D6F0] font-mono tracking-wider">
+                            HS-{String(h.id).padStart(3, '0')}
+
+                            {/* Mappls eLoc Badge — visually distinct when pending vs verified */}
+                            {(() => {
+                              const { label, isPending } = getElocDisplay(h.eloc);
+                              return (
+                                <span
+                                  className={
+                                    isPending
+                                      ? "text-slate-500 text-[9px] border border-slate-600/40 px-1.5 py-0.5 rounded bg-slate-700/10 tracking-widest"
+                                      : "text-[#00E5A0] text-[9px] border border-[#00E5A0]/40 px-1.5 py-0.5 rounded bg-[#00E5A0]/10 tracking-widest"
+                                  }
+                                  title={isPending ? "Mappls eLoc not yet resolved for this coordinate" : "Mappls verified digital address code"}
+                                >
+                                  {isPending ? "eLoc: —" : `eLoc: ${label}`}
+                                </span>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Mappls Physical Address — truncated with full text on hover */}
+                          <div
+                            className="text-[10px] text-slate-400 truncate max-w-full mt-0.5"
+                            title={getAddressDisplay(h.address)}
+                          >
+                            📍 {getAddressDisplay(h.address)}
+                          </div>
+                        </div>
                       </div>
                       <div className="manifest-badges">
                         {h.critical && <span className="badge badge-critical" style={{ background: 'rgba(255,0,85,0.15)', color: '#FF0055', border: '1px solid #FF0055' }}>{h.critical.split(" ")[1] || h.critical}</span>}
