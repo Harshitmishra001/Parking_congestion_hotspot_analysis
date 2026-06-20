@@ -272,12 +272,12 @@ const BootSequence = () => {
       <div className="w-full max-w-2xl bg-[#0F1724] border border-[#1A2540] rounded-lg shadow-[0_0_40px_rgba(0,229,160,0.1)]">
         <div className="flex items-center px-4 py-2 bg-[#0A1020] border-b border-[#1A2540] gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500"></div><div className="w-3 h-3 rounded-full bg-yellow-500"></div><div className="w-3 h-3 rounded-full bg-green-500"></div>
-          <span className="ml-4 text-[10px] text-slate-500 tracking-widest uppercase">Desolate_Era_OS_v2.4</span>
+          <span className="ml-4 text-[10px] text-slate-300 tracking-widest uppercase">Desolate_Era_OS_v2.4</span>
         </div>
         <div className="p-6 min-h-[300px] text-[13px] text-[#00E5A0] leading-relaxed">
           {lines.map((l, idx) => <div key={idx} className={l.includes('DESOLATE') ? 'text-white font-bold' : ''}>{l}</div>)}
           <div className="mt-4 flex items-center gap-3 text-[#C8D6F0] opacity-70">
-            <div className="w-4 h-4 border-2 border-slate-500 border-t-[#00E5A0] rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-slate-300 border-t-[#00E5A0] rounded-full animate-spin"></div>
             <span className="text-[11px] uppercase tracking-widest animate-pulse">Awaiting Server Handshake...</span>
           </div>
         </div>
@@ -564,7 +564,7 @@ export default function App() {
             <div className="manifest-empty">
               <AlertTriangle className="icon" />
               <div className="title">NO ACTIVE MANIFEST</div>
-              <div className="sub">Adjust parameters and Execute Dispatch to generate knapsack-optimized patrol routes.</div>
+              <div className="sub text-slate-300">Adjust parameters and Execute Dispatch to generate knapsack-optimized patrol routes.</div>
             </div>
           )}
 
@@ -607,7 +607,7 @@ export default function App() {
                                 <span
                                   className={
                                     isPending
-                                      ? "text-slate-500 text-[9px] border border-slate-600/40 px-1.5 py-0.5 rounded bg-slate-700/10 tracking-widest"
+                                      ? "text-slate-300 text-[9px] border border-slate-400/40 px-1.5 py-0.5 rounded bg-slate-700/10 tracking-widest"
                                       : "text-[#00E5A0] text-[9px] border border-[#00E5A0]/40 px-1.5 py-0.5 rounded bg-[#00E5A0]/10 tracking-widest"
                                   }
                                   title={isPending ? "Mappls eLoc not yet resolved for this coordinate" : "Mappls verified digital address code"}
@@ -620,7 +620,7 @@ export default function App() {
 
                           {/* Mappls Physical Address — truncated with full text on hover */}
                           <div
-                            className="text-[10px] text-slate-400 truncate max-w-full mt-0.5"
+                            className="text-[10px] text-slate-300 truncate max-w-full mt-0.5"
                             title={getAddressDisplay(h.address)}
                           >
                             📍 {getAddressDisplay(h.address)}
@@ -630,7 +630,7 @@ export default function App() {
                       <div className="manifest-badges">
                         {h.critical && <span className="badge badge-critical" style={{ background: 'rgba(255,0,85,0.15)', color: '#FF0055', border: '1px solid #FF0055' }}>{h.critical.split(" ")[1] || h.critical}</span>}
                         {h.event && <span className="badge badge-event" style={{ background: 'rgba(255,140,0,0.15)', color: '#FF8C00', border: '1px solid #FF8C00' }}>{h.event.split(" ")[1] || h.event}</span>}
-                        {h.tag?.includes("Repeat") ? <span className="badge badge-repeat" style={{ background: '#FF444422', color: '#FF4444', border: '1px solid #FF4444' }}>REPEAT</span> : <span className="badge badge-anomaly" style={{ background: '#4A608022', color: '#4A6080', border: '1px solid #4A6080' }}>ANOMALY</span>}
+                        {h.tag?.includes("Repeat") ? <span className="badge badge-repeat" style={{ background: '#FF444422', color: '#FF4444', border: '1px solid #FF4444' }}>REPEAT</span> : <span className="badge badge-anomaly" style={{ background: '#94A3B822', color: '#CBD5E1', border: '1px solid #94A3B8' }}>ANOMALY</span>}
                       </div>
                     </div>
                     
