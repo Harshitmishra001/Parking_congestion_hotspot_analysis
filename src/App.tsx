@@ -314,8 +314,16 @@ export default function App() {
       .catch(err => console.error("API Error", err));
   }, []);
 
-  async function handleDeploy() {
+  async function handleDeploy(overrideOfficers?: number | React.MouseEvent<HTMLButtonElement>) {
     if (appState === "analyzing") return;
+    
+    // Check if the parameter is a number (override) or an event (click)
+    const activeBudget = typeof overrideOfficers === 'number' ? overrideOfficers : officers;
+    
+    if (typeof overrideOfficers === 'number') {
+      setOfficers(overrideOfficers); // Update visual slider immediately
+    }
+
     setAppState("analyzing");
     setSpinnerStep(0);
     
@@ -329,7 +337,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           time_block: timeBlock,
-          available_officers: officers,
+          available_officers: activeBudget,
           alpha: alpha,
           lambda_: lambda,
           enable_critical: enableCritical,
@@ -591,7 +599,7 @@ export default function App() {
                 const maxME = Math.max(...twinData.map((d:any) => d.me), 1);
                 const isHero = t.me >= maxME * 0.9;
                 return (
-                  <div key={t.n} className={`twin-card ${isHero ? 'hero' : ''}`}>
+                  <div key={t.n} className={`twin-card ${isHero ? 'hero' : ''} cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-transform`} onClick={() => handleDeploy(officers + t.n)}>
                     {isHero && <div className="twin-hero-tag">Best ROI</div>}
                     <div className="twin-n">+{t.n} OFFICER{t.n > 1 ? 'S' : ''}</div>
                     <div className="twin-delta" style={{ color: isHero ? 'var(--signal)' : 'var(--frost)' }}>+{t.delta.toLocaleString()}<span>MIN</span></div>
