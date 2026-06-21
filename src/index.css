@@ -22,9 +22,18 @@
   --orange:   #FF8C00;
 }
 
+[data-theme='light'] {
+  --frost: #0F172A; /* slate-900 (Primary text) */
+  --slate: #64748B; /* slate-500 (Secondary text) */
+  --signal: #059669; /* emerald-600 */
+  --alert: #DC2626; /* red-600 */
+  --amber: #D97706; /* amber-600 */
+  --border: #E2E8F0; /* slate-200 */
+}
+
 /* ── BASE ── */
 body, #root {
-  background-color: var(--abyss) !important;
+  background-color: var(--abyss);
   color: var(--frost);
   font-family: 'Space Grotesk', sans-serif;
 }
@@ -47,9 +56,9 @@ body, #root {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
 }
-.status-strip.idle    { background: #0A1020; color: var(--slate); }
-.status-strip.running { background: #140F00; color: var(--amber); border-bottom-color: #FFB80030; }
-.status-strip.complete{ background: #001A0F; color: var(--signal); border-bottom-color: #00E5A030; }
+.status-strip.idle    { color: var(--slate); }
+.status-strip.running { color: var(--amber); border-bottom-color: #FFB80030; }
+.status-strip.complete{ color: var(--signal); border-bottom-color: #00E5A030; }
 
 .status-dot {
   display: inline-block;
@@ -68,7 +77,6 @@ body, #root {
   height: 34px;
   display: flex;
   align-items: center;
-  background: var(--abyss);
   border-bottom: 1px solid var(--border);
 }
 .ticker-inner {
@@ -106,8 +114,6 @@ body, #root {
   justify-content: space-between;
   padding: 0 24px;
   height: 52px;
-  background: var(--abyss);
-  border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 200;
 }
 .topbar-brand {
@@ -186,8 +192,6 @@ body, #root {
   gap: 0;
   padding: 0 24px;
   height: 70px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
 }
 .ctrl-zone {
   display: flex; align-items: center; gap: 16px;
@@ -211,10 +215,9 @@ body, #root {
 
 /* Custom select */
 .ctrl-select {
-  background: var(--abyss);
-  color: var(--frost);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  color: var(--frost);
+  border-radius: 4px;
   padding: 7px 12px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
@@ -229,8 +232,6 @@ body, #root {
   font-size: 11px; font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--slate);
-  background: #080C14;
-  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 12px;
   cursor: pointer;
@@ -293,8 +294,6 @@ body, #root {
 
 /* ── MAP PANEL ── */
 .map-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   position: relative;
@@ -303,8 +302,6 @@ body, #root {
 }
 .map-header {
   position: absolute; top: 12px; left: 12px; z-index: 1000;
-  background: rgba(8,12,20,0.88);
-  border: 1px solid var(--border);
   border-radius: 5px;
   padding: 5px 12px;
   font-size: 9px; color: var(--slate);
@@ -312,8 +309,6 @@ body, #root {
 }
 .map-legend {
   position: absolute; bottom: 12px; left: 12px; z-index: 1000;
-  background: rgba(8,12,20,0.88);
-  border: 1px solid var(--border);
   border-radius: 6px; padding: 10px 14px;
 }
 .legend-item {
@@ -329,8 +324,6 @@ body, #root {
 
 /* ── MANIFEST PANEL ── */
 .manifest-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   display: flex; flex-direction: column;
@@ -370,7 +363,6 @@ body, #root {
   flex-shrink: 0;
 }
 .impact-cell {
-  background: var(--surface);
   padding: 12px 14px;
 }
 .impact-label {
@@ -395,7 +387,6 @@ body, #root {
 .manifest-scroll::-webkit-scrollbar-thumb { background: var(--elevated); border-radius: 2px; }
 
 .manifest-row {
-  border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 10px;
   overflow: hidden;
@@ -462,21 +453,24 @@ body, #root {
   font-family: 'Space Grotesk', sans-serif;
 }
 .badge-repeat {
-  color: var(--alert); background: rgba(255,59,92,0.15);
-  border: 1px solid rgba(255,59,92,0.4);
+  color: var(--alert); 
+  background: color-mix(in srgb, var(--alert) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--alert) 40%, transparent);
 }
 .badge-anomaly {
-  color: var(--amber);
-  border: 1px solid rgba(255,184,0,0.4);
-  background: transparent;
+  color: var(--slate);
+  background: color-mix(in srgb, var(--slate) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--slate) 40%, transparent);
 }
 .badge-critical {
-  color: #FF0055; background: rgba(255,0,85,0.12);
-  border: 1px solid rgba(255,0,85,0.35);
+  color: var(--alert); 
+  background: color-mix(in srgb, var(--alert) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--alert) 40%, transparent);
 }
 .badge-event {
-  color: var(--orange); background: rgba(255,140,0,0.12);
-  border: 1px solid rgba(255,140,0,0.35);
+  color: var(--amber); 
+  background: color-mix(in srgb, var(--amber) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
 }
 
 /* Manifest empty state */
@@ -527,8 +521,6 @@ body, #root {
 
 /* ── DIGITAL TWIN PANEL ── */
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 20px;
 }
@@ -545,8 +537,6 @@ body, #root {
 }
 .twin-card {
   flex: 1;
-  background: var(--abyss);
-  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
   transition: border-color 0.2s;
@@ -626,9 +616,7 @@ body, #root {
 .registry-row {
   display: flex; align-items: center; gap: 14px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border);
 }
-.registry-row:last-child { border-bottom: none; }
 
 /* Rank medallion */
 .rank-medallion {
