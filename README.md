@@ -1,3 +1,12 @@
+---
+title: Desolate Era Os
+emoji: 📉
+colorFrom: pink
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # Desolate-Era-OS
 **Predictive Logistics & Automated Dispatch Engine**  
 *Flipkart GRiD Hackathon (Theme 1) Submission by Team Desolate Era*
