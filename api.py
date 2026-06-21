@@ -9,8 +9,142 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pulp
 from sklearn.cluster import KMeans
+import os
+import json
+import time
+import requests
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MAPPLS_STATIC_KEY = os.getenv("MAPPLS_STATIC_KEY")
+if not MAPPLS_STATIC_KEY:
+    print("⚠ WARNING: MAPPLS_STATIC_KEY not set. All Mappls features will fall back to local math.")
+
+# MODULE A - CACHING LAYER
+CACHE_DIR = Path("mappls_cache")
+CACHE_DIR.mkdir(exist_ok=True)
+DISTANCE_CACHE_FILE = CACHE_DIR / "distance_cache.json"
+ELOC_CACHE_FILE = CACHE_DIR / "eloc_cache.json"
+
+def _load_cache(filepath):
+    if filepath.exists():
+        try:
+            with open(filepath, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+def _save_cache(filepath, cache_dict):
+    try:
+        with open(filepath, "w") as f:
+            json.dump(cache_dict, f)
+    except IOError as e:
+        print(f"⚠ Cache write failed: {e}")
+
+_distance_cache = _load_cache(DISTANCE_CACHE_FILE)
+_eloc_cache = _load_cache(ELOC_CACHE_FILE)
+
+def _coord_key(lat1, lon1, lat2, lon2):
+    return f"{round(lat1,4)},{round(lon1,4)}|{round(lat2,4)},{round(lon2,4)}"
+
+def _single_coord_key(lat, lon):
+    return f"{round(lat,4)},{round(lon,4)}"
+
+# MODULE B - CIRCUIT BREAKER
+class MapplsCircuitBreaker:
+    def __init__(self, max_failures=3, cooldown_seconds=120):
+        self.max_failures = max_failures
+        self.cooldown_seconds = cooldown_seconds
+        self.failure_count = 0
+        self.circuit_open_until = 0
+
+    def is_open(self):
+        if self.circuit_open_until > time.time():
+            return True
+        return False
+
+    def record_success(self):
+        self.failure_count = 0
+
+    def record_failure(self):
+        self.failure_count += 1
+        if self.failure_count >= self.max_failures:
+            self.circuit_open_until = time.time() + self.cooldown_seconds
+            print(
+                f"⚠ Mappls circuit breaker OPEN — "
+                f"{self.max_failures} consecutive failures. "
+                f"Falling back to local math for {self.cooldown_seconds}s."
+            )
+
+_mappls_breaker = MapplsCircuitBreaker(max_failures=3, cooldown_seconds=120)
+
+# MODULE C - DISTANCE MATRIX
+def get_mappls_driving_distance(lat1, lon1, lat2, lon2):
+    if not MAPPLS_STATIC_KEY:
+        return haversine_km(lat1, lon1, lat2, lon2)
+
+    cache_key = _coord_key(lat1, lon1, lat2, lon2)
+    if cache_key in _distance_cache:
+        return _distance_cache[cache_key]
+
+    if _mappls_breaker.is_open():
+        return haversine_km(lat1, lon1, lat2, lon2)
+
+    try:
+        url = (
+            f"https://apis.mappls.com/advancedmaps/v1/"
+            f"{MAPPLS_STATIC_KEY}/distance_matrix/driving/"
+            f"{lon1},{lat1};{lon2},{lat2}"
+        )
+        response = requests.get(url, timeout=3)
+
+        if response.status_code != 200:
+            _mappls_breaker.record_failure()
+            return haversine_km(lat1, lon1, lat2, lon2)
+
+        data = response.json()
+        distances = data.get("results", {}).get("distances")
+        if not distances or not distances[0] or len(distances[0]) < 2:
+            _mappls_breaker.record_failure()
+            return haversine_km(lat1, lon1, lat2, lon2)
+
+        distance_meters = distances[0][1]
+        distance_km = distance_meters / 1000.0
+
+        straight_line = haversine_km(lat1, lon1, lat2, lon2)
+        if distance_km < straight_line * 0.95:
+            _mappls_breaker.record_failure()
+            return straight_line
+
+        _mappls_breaker.record_success()
+        _distance_cache[cache_key] = distance_km
+        _save_cache(DISTANCE_CACHE_FILE, _distance_cache)
+        return distance_km
+
+    except requests.exceptions.RequestException as e:
+        print(f"Mappls Distance Matrix failed: {e}")
+        _mappls_breaker.record_failure()
+        return haversine_km(lat1, lon1, lat2, lon2)
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+        print(f"Mappls response parsing failed: {e}")
+        _mappls_breaker.record_failure()
+        return haversine_km(lat1, lon1, lat2, lon2)
 
 app = FastAPI(title="Predictive Parking API")
+
+@app.on_event("startup")
+async def log_mappls_status():
+    if MAPPLS_STATIC_KEY:
+        print(f"✓ Mappls API key loaded. Distance Matrix: LIVE (cached + circuit-breaker protected).")
+    else:
+        print("⚠ Mappls API key not found. Running on local Haversine math only.")
+
+    cached_distances = len(_distance_cache)
+    print(f"  Distance cache: {cached_distances} pairs already cached (free on repeat).")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,13 +154,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def health_check():
+    return {"status": "ok", "service": "desolate_era_os"}
+
 _DAY_MAP = {
     "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
     "Friday": 4, "Saturday": 5, "Sunday": 6,
 }
 
-def load_and_sanitise(path: str = "unified_friction_log.csv") -> pd.DataFrame:
-    df = pd.read_csv(path)
+def load_and_sanitise() -> pd.DataFrame:
+    _enriched_path = "unified_friction_log_enriched.csv"
+    _csv_path = _enriched_path if os.path.exists(_enriched_path) else "unified_friction_log.csv"
+    df = pd.read_csv(_csv_path)
+    
+    if "mappls_eloc" not in df.columns:
+        df["mappls_eloc"] = "PENDING"
+    if "mappls_address" not in df.columns:
+        df["mappls_address"] = "Bengaluru" 
     df = df[
         df["centroid_lat"].between(12.7, 13.2) &
         df["centroid_lon"].between(77.3, 77.8)
@@ -190,9 +335,38 @@ def get_vitals():
     cols = ['id', 'lat', 'lon', 'delay', 'cost', 'conf', 'chronic', 'tag', 'critical', 'event']
     hotspots_list = df_to_records(unique_hotspots[cols])
     
+    time_blocks = sorted(master_df['time_block'].unique().tolist())
+    
+    # Filter for chronic offenders
+    chronic_df = master_df[master_df['is_chronic'] == True]
+    if not chronic_df.empty:
+        registry = chronic_df.groupby('hotspot_id').agg({
+            'estimated_delay_minutes': 'sum',
+            'confidence_score': 'mean',
+            'time_block': lambda x: x.mode()[0] if not x.mode().empty else 'N/A'
+        }).reset_index()
+        # Rename columns to match frontend expectations
+        registry.rename(columns={
+            'hotspot_id': 'id', 
+            'estimated_delay_minutes': 'totalDelay',
+            'confidence_score': 'conf',
+            'time_block': 'peak'
+        }, inplace=True)
+        registry = registry.sort_values('totalDelay', ascending=False).head(6)
+        # Add rank and recommendation
+        registry['rank'] = range(1, len(registry) + 1)
+        registry['violations'] = (registry['totalDelay'] / 1.5).astype(int) # Mock violations based on delay
+        registry['rec'] = registry['conf'].apply(lambda c: "Permanent barricade" if c >= 0.90 else "Regular patrol slot")
+        
+        chronic_registry_data = registry.replace({np.nan: None}).to_dict(orient='records')
+    else:
+        chronic_registry_data = []
+    
     return {
         "cityStats": city_stats,
-        "hotspots": hotspots_list
+        "hotspots": hotspots_list,
+        "time_blocks": time_blocks,
+        "chronic_registry": chronic_registry_data
     }
 
 @app.post("/api/dispatch")
@@ -322,7 +496,10 @@ def run_dispatch(req: DispatchRequest):
             best_idx = -1
             for idx, row in sub.iterrows():
                 if idx in visited: continue
-                d = haversine_km(current_lat, current_lon, row['centroid_lat'], row['centroid_lon'])
+                d = get_mappls_driving_distance(
+                    current_lat, current_lon,
+                    row['centroid_lat'], row['centroid_lon']
+                )
                 p = priority_score(row['estimated_delay_minutes'], row['confidence_score'],
                                    row['time_elapsed_hours'], d, req.lambda_, req.alpha)
                 if p > best_score:
@@ -344,6 +521,8 @@ def run_dispatch(req: DispatchRequest):
     
     # Map back to UI schema where needed
     routed_manifest['id'] = routed_manifest['hotspot_id']
+    routed_manifest['eloc'] = routed_manifest['mappls_eloc'] if 'mappls_eloc' in routed_manifest.columns else 'PENDING'
+    routed_manifest['address'] = routed_manifest['mappls_address'] if 'mappls_address' in routed_manifest.columns else 'Bengaluru'
     routed_manifest['lat'] = routed_manifest['centroid_lat']
     routed_manifest['lon'] = routed_manifest['centroid_lon']
     routed_manifest['delay'] = routed_manifest['estimated_delay_minutes']

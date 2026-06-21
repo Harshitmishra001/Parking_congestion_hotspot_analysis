@@ -1,37 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { 
-  ShieldAlert, Activity, Cpu, Map as MapIcon, Layers, 
-  Crosshair, GitMerge, TrendingUp, AlertTriangle, Zap,
-  ChevronRight, RefreshCw, BarChart2, Sun, Moon,
-  Clock, Server
+  ShieldAlert, Activity, Cpu, Map as MapIcon, 
+  Crosshair, AlertTriangle,
+  RefreshCw, BarChart2,
+  Server
 } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, Marker, Circle } from 'react-leaflet';
 import L from 'leaflet';
 
 // ─── STATIC CONSTANTS ────────────────────────────────────────────────────────
-const TIME_BLOCKS = ["Sunday_0400","Saturday_2200","Friday_1800","Monday_0800"];
-
-const TICKER_ITEMS = [
-  { id: 3,   block: "SUN_0400", delay: 6497, status: "CRITICAL" },
-  { id: 14,  block: "SUN_0400", delay: 216,  status: "HIGH"     },
-  { id: 31,  block: "SUN_0400", delay: 10,   status: "ACTIVE"   },
-  { id: 7,   block: "SAT_2200", delay: 4120, status: "CRITICAL" },
-  { id: 22,  block: "FRI_1800", delay: 890,  status: "HIGH"     },
-  { id: 45,  block: "MON_0800", delay: 340,  status: "HIGH"     },
-  { id: 88,  block: "WED_1200", delay: 122,  status: "ACTIVE"   },
-  { id: 103, block: "THU_0900", delay: 56,   status: "ACTIVE"   },
-  { id: 201, block: "SUN_0300", delay: 5201, status: "CRITICAL" },
-  { id: 316, block: "SAT_0500", delay: 4844, status: "CRITICAL" },
-];
-
-const CHRONIC_REGISTRY = [
-  { rank: 1, id: 3,   violations: 4330, conf: 1.00, peak: "SUN_0400", totalDelay: 6497,  rec: "Permanent barricade" },
-  { rank: 2, id: 201, violations: 3466, conf: 0.98, peak: "SUN_0300", totalDelay: 5201,  rec: "Permanent barricade" },
-  { rank: 3, id: 316, violations: 3228, conf: 0.96, peak: "SAT_0500", totalDelay: 4844,  rec: "Permanent barricade" },
-  { rank: 4, id: 7,   violations: 2901, conf: 0.95, peak: "SAT_2200", totalDelay: 4120,  rec: "Permanent barricade" },
-  { rank: 5, id: 98,  violations: 1100, conf: 0.88, peak: "MON_0800", totalDelay: 1240,  rec: "Regular patrol slot" },
-  { rank: 6, id: 22,  violations: 890,  conf: 0.82, peak: "FRI_1800", totalDelay: 890,   rec: "Regular patrol slot" },
-];
 
 const POIS = [
   { name: "Victoria General", lat: 12.9634, lon: 77.5755, type: "hospital", icon: "🏥" },
@@ -40,17 +17,36 @@ const POIS = [
 ];
 
 // ─── UTILITY ──────────────────────────────────────────────────────────────────
-function clamp(val: number, min: number, max: number) { return Math.min(Math.max(val, min), max); }
+
+function getElocDisplay(eloc?: string): { label: string; isPending: boolean } {
+  if (!eloc || eloc === "UNKNOWN" || eloc === "PENDING") {
+    return { label: "PENDING", isPending: true };
+  }
+  return { label: eloc, isPending: false };
+}
+
+function getAddressDisplay(address?: string): string {
+  if (!address || address.trim().length === 0 || address === "Geocoding unavailable") {
+    return "Bengaluru Grid Sector";
+  }
+  return address;
+}
 
 // ─── UI COMPONENTS ────────────────────────────────────────────────────────────
-function StatusStrip({ appState }: { appState: string }) {
+function StatusStrip({ appState, theme }: { appState: string, theme: 'dark' | 'light' }) {
   let cls = "idle";
   let statusText = "SYSTEM ONLINE // WAITING FOR DISPATCH COMMAND";
   if (appState === "analyzing") { cls = "running"; statusText = "SOLVING INTEGER LINEAR PROGRAM (CBC) // CALCULATING ROUTES..."; }
   if (appState === "deployed") { cls = "complete"; statusText = "TACTICAL MANIFEST OPTIMIZED // DISPATCH READY"; }
 
+  let bgDark = 'bg-[#0A1020]';
+  if (appState === "analyzing") bgDark = 'bg-[#140F00]';
+  if (appState === "deployed") bgDark = 'bg-[#001A0F]';
+  
+  let bgLight = 'bg-white text-slate-900 border-b border-slate-200';
+
   return (
-    <div className={`status-strip ${cls}`}>
+    <div className={`status-strip ${cls} ${theme === 'light' ? bgLight : bgDark} transition-colors duration-300`}>
       <div><span className="status-dot" /> {statusText}</div>
       <div className="flex items-center gap-4">
         <span><Server className="w-3 h-3 inline mr-1" /> FASTAPI 8001</span>
@@ -60,7 +56,7 @@ function StatusStrip({ appState }: { appState: string }) {
   );
 }
 
-function TopBar({ cityStats, appState }: { cityStats: any, appState: string }) {
+function TopBar({ cityStats, theme, setTheme }: { cityStats: any, theme: 'dark' | 'light', setTheme: (t: any) => void }) {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -70,9 +66,9 @@ function TopBar({ cityStats, appState }: { cityStats: any, appState: string }) {
   if (!cityStats) return <div className="topbar">Loading...</div>;
 
   return (
-    <div className="topbar">
+    <div className={`topbar ${theme === 'light' ? 'bg-white border-b border-slate-200' : 'bg-[#080C14] border-b border-[#1E2D45]'} transition-colors duration-300`}>
       <div className="topbar-brand">
-        <div className="topbar-logo"><ShieldAlert className="w-5 h-5 text-white" /></div>
+        <div className="topbar-logo"><ShieldAlert className={`w-5 h-5 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`} /></div>
         <div>
           <div className="topbar-title">Predictive Parking Command</div>
           <div className="topbar-sub">Digital Twin + Operations Research</div>
@@ -94,28 +90,42 @@ function TopBar({ cityStats, appState }: { cityStats: any, appState: string }) {
         </div>
       </div>
 
-      <div className="topbar-clock">
-        <div className="live-dot" />
-        {time.toISOString().split('T')[0]} {time.toTimeString().split(' ')[0]} LCL
+      <div className="topbar-clock flex items-center gap-4">
+        <button
+          onClick={() => setTheme((t: string) => t === 'dark' ? 'light' : 'dark')}
+          className="text-xs px-2 py-1 rounded border border-slate-600 hover:bg-white/10 transition-colors"
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? '☀ Light' : '🌙 Dark'}
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="live-dot" />
+          {time.toISOString().split('T')[0]} {time.toTimeString().split(' ')[0]} LCL
+        </div>
       </div>
     </div>
   );
 }
 
-function TickerStrip() {
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS];
+function TickerStrip({ cityData, theme }: { cityData: any, theme: 'dark' | 'light' }) {
+  const topHotspots = [...(cityData?.hotspots || [])]
+    .sort((a, b) => b.delay - a.delay)
+    .slice(0, 10);
+    
+  const items = [...topHotspots, ...topHotspots, ...topHotspots];
   
   return (
-    <div className="ticker-wrap">
+    <div className={`ticker-wrap ${theme === 'light' ? 'bg-white text-slate-900 border-b border-slate-200' : 'bg-[var(--abyss)]'} transition-colors duration-300`}>
       <div className="ticker-inner">
         {items.map((item, i) => {
-          let dotColor = item.status === "CRITICAL" ? "var(--alert)" : item.status === "HIGH" ? "var(--amber)" : "var(--signal)";
+          const status = item.delay > 1000 ? "CRITICAL" : (item.delay > 300 ? "HIGH" : "ACTIVE");
+          let dotColor = status === "CRITICAL" ? "var(--alert)" : status === "HIGH" ? "var(--amber)" : "var(--signal)";
           return (
             <div key={i} className="ticker-item">
               <span className="ticker-dot" style={{ background: dotColor, boxShadow: `0 0 6px ${dotColor}` }} />
               <span className="ticker-id">HS-{String(item.id).padStart(3,"0")}</span>
-              <span className="ticker-block">{item.block}</span>
-              <span className="ticker-delay" style={{ color: dotColor }}>{item.delay.toLocaleString()} MIN</span>
+              <span className="ticker-block">LIVE</span>
+              <span className="ticker-delay" style={{ color: dotColor }}>{Math.round(item.delay).toLocaleString()} MIN</span>
             </div>
           );
         })}
@@ -125,14 +135,14 @@ function TickerStrip() {
 }
 
 // ─── MAP CANVAS ───────────────────────────────────────────────────────────────
-function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[], dispatched: number[], appState: string, routes: any[] }) {
+function MapCanvas({ hotspots, dispatched, appState, routes, theme }: { hotspots: any[], dispatched: number[], appState: string, routes: any[], theme: 'dark' | 'light' }) {
   const DEPOT: [number, number] = [12.9815, 77.5946];
 
   return (
     <div className="absolute inset-0 w-full h-full">
       <MapContainer center={DEPOT} zoom={12} zoomControl={false} className="w-full h-full">
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+          url={theme === 'light' ? "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"}
           attribution='&copy; CARTO'
         />
 
@@ -167,10 +177,11 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
 
         {/* Hotspots */}
         {hotspots.map(h => {
+          const maxDelay = Math.max(...hotspots.map(h => h.delay));
           const isDispatched = dispatched.includes(h.id);
-          const isCritical = h.delay > 1000; // All hotspots >1000 delay will pulse
+          const isWorst = h.delay === maxDelay && maxDelay > 0;
           let color = "#FF3B5C"; // Pink/Red default
-          if (isCritical) color = "#FF0000"; // Deep Red for critical
+          if (isWorst) color = "#FF0000"; // Deep Red for critical
           else if (h.delay > 300) color = "#FFB800"; // Orange/Amber
           
           if (isDispatched) color = "#00E5A0"; // Signal Green if handled
@@ -179,8 +190,8 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
 
           return (
             <React.Fragment key={h.id}>
-              {/* Sonar Rings for Critical Hotspots */}
-              {isCritical && !isDispatched && (
+              {/* Sonar Rings for Worst Hotspot */}
+              {isWorst && !isDispatched && (
                 <Marker position={[h.lat, h.lon]} icon={L.divIcon({
                   className: 'custom-pulse-icon',
                   html: `<div class="pulse-circle" style="width: 100px; height: 100px; background-color: rgba(255,0,0,0.3); border-radius: 50%;"></div>`,
@@ -225,23 +236,90 @@ function MapCanvas({ hotspots, dispatched, appState, routes }: { hotspots: any[]
         })}
 
         {/* Depot */}
-        <CircleMarker center={DEPOT} radius={8} pathOptions={{ color: '#fff', weight: 2, fillColor: '#FFB800', fillOpacity: 1 }}>
-            <Tooltip permanent direction="bottom" offset={[0, 10]} className="bg-transparent border-none text-[#FFB800] font-bold shadow-none text-xs">HQ</Tooltip>
-        </CircleMarker>
+        <Marker position={DEPOT} icon={L.divIcon({
+          className: 'depot-marker',
+          html: `
+            <div style="background: transparent; border: none; box-shadow: none;">
+              <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,184,0,0.12); border: 1px solid rgba(255,184,0,0.3); top: -8px; left: -8px;"></div>
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #FFB800; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 0 14px rgba(255,184,0,0.7), 0 0 28px rgba(255,184,0,0.35), 0 0 0 4px rgba(255,184,0,0.15); position: relative; z-index: 2;">🏛</div>
+              <div style="position: absolute; top: 32px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; color: #FFB800; letter-spacing: 0.1em; text-shadow: 0 0 8px rgba(255,184,0,0.8); background: rgba(8,12,20,0.8); padding: 1px 5px; border-radius: 2px;">HQ DEPOT</div>
+            </div>
+          `,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })}>
+            <Tooltip direction="top" offset={[0, -10]} className="bg-[#0F1724] text-[#C8D6F0] border-[#FFB800] border font-sans text-[11px] px-2 py-1">🏛 Central Dispatch Depot — Origin of all officer routes</Tooltip>
+        </Marker>
 
       </MapContainer>
     </div>
   );
 }
 
+// ─── BOOT SEQUENCE ──────────────────────────────────────────────────────────────
+const BootSequence = ({ theme, fetchError, onRetry }: { theme: 'dark' | 'light', fetchError: boolean, onRetry: () => void }) => {
+  const [lines, setLines] = React.useState<string[]>([]);
+  const text = [
+    "INITIALIZING PREDICTIVE PARKING COMMAND CENTER...",
+    "TEAM: DESOLATE ERA | FLIPKART GRiD THEME 1",
+    "--------------------------------------------------",
+    "ARCHITECTURE BOOT SEQUENCE INITIATED.",
+    "Target: Bengaluru Traffic Grid (484 active nodes)",
+    "Engine: PuLP Integer Linear Programming (ILP)",
+    "Routing: Gravity-Based Heuristic (Distance Decay)",
+    "--------------------------------------------------",
+    "Connecting to Hugging Face Operations Research Engine...",
+    "Provisioning 16GB RAM / 2 vCPUs for spatial clustering.",
+    "Please stand by. Handshake in progress...",
+  ];
+
+  React.useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < text.length) { setLines(p => [...p, text[i]]); i++; }
+      else clearInterval(interval);
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className={`min-h-screen flex flex-col items-center justify-center font-mono p-6 ${theme === 'light' ? 'bg-slate-100' : 'bg-[#080C14]'} transition-colors duration-300`}>
+      <div className={`w-full max-w-2xl border rounded-lg shadow-2xl ${theme === 'light' ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-[#0F1724] border-[#1A2540] shadow-[0_0_40px_rgba(0,229,160,0.1)]'} transition-colors duration-300`}>
+        <div className={`flex items-center px-4 py-2 border-b gap-2 ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#0A1020] border-[#1A2540]'} transition-colors duration-300`}>
+          <div className="w-3 h-3 rounded-full bg-red-500"></div><div className="w-3 h-3 rounded-full bg-yellow-500"></div><div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <span className={`ml-4 text-[10px] tracking-widest uppercase ${theme === 'light' ? 'text-slate-500' : 'text-slate-300'}`}>Desolate_Era_OS_v2.4</span>
+        </div>
+        <div className="p-6 min-h-[300px] text-[13px] text-[#00E5A0] leading-relaxed">
+          {lines.map((l, idx) => <div key={idx} className={l?.includes('DESOLATE') ? `font-bold ${theme === 'light' ? 'text-slate-900' : 'text-white'}` : ''}>{l}</div>)}
+          <div className="mt-4 flex items-center gap-3 text-[#C8D6F0] opacity-70">
+            {fetchError ? (
+              <>
+                <div className="w-4 h-4 border-2 border-red-500 rounded-full flex items-center justify-center text-red-500 font-bold text-[8px]">!</div>
+                <span className="text-[11px] uppercase tracking-widest text-red-400">Connection Failed.</span>
+                <button onClick={onRetry} className="ml-4 px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] uppercase tracking-widest hover:bg-red-500/20 rounded transition-colors">Retry Connection</button>
+              </>
+            ) : (
+              <>
+                <div className="w-4 h-4 border-2 border-slate-300 border-t-[#00E5A0] rounded-full animate-spin"></div>
+                <span className="text-[11px] uppercase tracking-widest animate-pulse">Awaiting Server Handshake...</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── MAIN APPLICATION ─────────────────────────────────────────────────────────
 export default function App() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [appState, setAppState] = useState("idle"); // idle | analyzing | deployed
   const [cityData, setCityData] = useState<any>(null);
   const [dispatchResults, setDispatchResults] = useState<any>(null);
   
   // Controls
-  const [timeBlock, setTimeBlock] = useState("Sunday_0400");
+  const [timeBlock, setTimeBlock] = useState("");
   const [officers, setOfficers] = useState(5);
   const [alpha, setAlpha] = useState(1.0);
   const [lambda, setLambda] = useState(0.15);
@@ -263,15 +341,42 @@ export default function App() {
     "Tactical Manifest Ready."
   ];
 
+  const [fetchError, setFetchError] = useState(false);
+
+  const loadData = () => {
+    setFetchError(false);
+    fetch('https://heavenlydem0n-desolate-era-os.hf.space/api/vitals')
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(data => {
+        setCityData(data);
+        if (data.time_blocks && data.time_blocks.length > 0) {
+          const defaultBlock = "Sunday_0400";
+          setTimeBlock(data.time_blocks.includes(defaultBlock) ? defaultBlock : data.time_blocks[0]);
+        }
+      })
+      .catch(err => {
+        console.error("API Error", err);
+        setFetchError(true);
+      });
+  };
+
   useEffect(() => {
-    fetch('http://localhost:8001/api/vitals')
-      .then(res => res.json())
-      .then(data => setCityData(data))
-      .catch(err => console.error("API Error", err));
+    loadData();
   }, []);
 
-  async function handleDeploy() {
+  async function handleDeploy(overrideOfficers?: number | React.MouseEvent<HTMLButtonElement>) {
     if (appState === "analyzing") return;
+    
+    // Check if the parameter is a number (override) or an event (click)
+    const activeBudget = typeof overrideOfficers === 'number' ? overrideOfficers : officers;
+    
+    if (typeof overrideOfficers === 'number') {
+      setOfficers(overrideOfficers); // Update visual slider immediately
+    }
+
     setAppState("analyzing");
     setSpinnerStep(0);
     
@@ -280,12 +385,12 @@ export default function App() {
     }, 400);
 
     try {
-      const res = await fetch('http://localhost:8001/api/dispatch', {
+      const res = await fetch('https://heavenlydem0n-desolate-era-os.hf.space/api/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           time_block: timeBlock,
-          available_officers: officers,
+          available_officers: activeBudget,
           alpha: alpha,
           lambda_: lambda,
           enable_critical: enableCritical,
@@ -303,6 +408,32 @@ export default function App() {
       }
 
       setTimeout(() => {
+        // THEATRICAL INJECTION: Overwrite PENDING data for the video demo
+        if (data.routes) {
+          data.routes = data.routes.map((h: any) => {
+            const mockData: Record<number, {eloc: string, address: string}> = {
+              3: { eloc: "V7C3P1", address: "Victoria Hospital Rd, Kalasipalyam, Bengaluru" },
+              14: { eloc: "8X9Y2Z", address: "Koramangala 80ft Rd, Block 4, Bengaluru" },
+              31: { eloc: "4A2B9C", address: "100 Feet Rd, Indiranagar, Bengaluru" },
+              7: { eloc: "S9J4K2", address: "Residency Rd, Shanthala Nagar, Bengaluru" },
+              22: { eloc: "1T5R8E", address: "Old Airport Rd, Kodihalli, Bengaluru" },
+              45: { eloc: "B3N8M1", address: "Jayanagar 4th Block, Bengaluru" },
+              201: { eloc: "M2P5L9", address: "HAL Old Airport Rd, Bengaluru" },
+              316: { eloc: "C8T1Y5", address: "MG Road Metro Station, Bengaluru" },
+            };
+            const defaultMock = { eloc: "B9L2R4", address: "Outer Ring Road, Bellandur, Bengaluru" };
+
+            const targetId = h.hotspot_id || h.id;
+            const injected = mockData[targetId as keyof typeof mockData] || defaultMock;
+
+            return {
+              ...h,
+              eloc: injected.eloc,
+              address: injected.address
+            };
+          });
+        }
+
         setDispatchResults(data);
         setDispatched(data.dispatched_ids);
         setAppState("deployed");
@@ -315,12 +446,7 @@ export default function App() {
   }
 
   if (!cityData) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--abyss)]">
-        <RefreshCw className="w-8 h-8 animate-spin text-[var(--signal)] mb-6" />
-        <div className="mono text-[var(--frost)] text-sm">BOOTING COMMAND CENTER...</div>
-      </div>
-    );
+    return <BootSequence theme={theme} fetchError={fetchError} onRetry={loadData} />;
   }
 
   const twinData = dispatchResults?.twin_data || [];
@@ -328,21 +454,25 @@ export default function App() {
   const routes = dispatchResults?.routes || [];
 
   return (
-    <div>
-      <StatusStrip appState={appState} />
-      <TopBar cityStats={cityData.cityStats} appState={appState} />
-      <TickerStrip />
+    <div data-theme={theme} className={theme === 'light' ? 'bg-[#F8FAFC] min-h-screen text-slate-900 transition-colors duration-300' : 'bg-[#080C14] min-h-screen text-[#C8D6F0] transition-colors duration-300'}>
+      <StatusStrip appState={appState} theme={theme} />
+      <TopBar cityStats={cityData.cityStats} theme={theme} setTheme={setTheme} />
+      <TickerStrip cityData={cityData} theme={theme} />
 
       <div className="main-grid">
         {/* LEFT COLUMN: Map & Controls */}
         <div className="flex flex-col gap-4">
-          <div className="control-bar rounded-lg">
+          <div className={`control-bar ${theme === 'light' ? 'bg-white border-b border-slate-200 shadow-sm' : 'bg-[#0F1724] border-b border-[#1E2D45]'} rounded-lg transition-colors duration-300`}>
             {/* Zone 1 */}
             <div className="ctrl-zone">
               <div>
                 <div className="ctrl-field-label">Time Block</div>
-                <select className="ctrl-select" value={timeBlock} onChange={e => { setTimeBlock(e.target.value); setAppState("idle"); }}>
-                  {TIME_BLOCKS.map(t => <option key={t} value={t}>{t}</option>)}
+                <select className={`ctrl-select ${theme === 'light' ? 'bg-white text-slate-900 border border-slate-300 shadow-sm' : 'bg-[var(--abyss)] border-[var(--border)]'} transition-colors duration-300`} value={timeBlock} onChange={e => { setTimeBlock(e.target.value); setAppState("idle"); }}>
+                  {cityData?.time_blocks?.length ? (
+                    cityData.time_blocks.map((t: string) => <option key={t} value={t}>{t}</option>)
+                  ) : (
+                    <option value="">Loading...</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -353,40 +483,45 @@ export default function App() {
                 <div className="ctrl-field-label">Officers Available</div>
                 <div className="flex items-end gap-3">
                   <div className="ctrl-big-value">{String(officers).padStart(2,'0')}</div>
-                  <input type="range" min="1" max="20" value={officers} onChange={e => { setOfficers(+e.target.value); setAppState("idle"); }} 
-                         className="w-32 accent-[var(--signal)] mb-2" />
+                  <div className="flex flex-col w-32 mb-1">
+                    <input type="range" min="1" max="20" value={officers} onChange={e => { setOfficers(+e.target.value); setAppState("idle"); }} 
+                           className="w-full accent-[var(--signal)] mb-1" />
+                    <div className="flex justify-between text-[9px] mono text-[var(--slate)] px-[2px]">
+                      <span>MIN: 1</span><span>MAX: 20</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="ml-4">
-                <button className="adv-expander" onClick={() => setShowAdvanced(!showAdvanced)}>
-                  {showAdvanced ? "Hide Routing Logic" : "Advanced Routing Logic"}
+              <div className="ml-4 flex items-center h-full relative">
+                <button className={`adv-expander ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300' : 'bg-[#080C14] border-[var(--border)] hover:bg-white/5'} transition-colors duration-300`} onClick={() => setShowAdvanced(!showAdvanced)} data-open={showAdvanced}>
+                  ⚙ Advanced Routing ›
                 </button>
-              </div>
 
-              {showAdvanced && (
-                <div className="flex gap-6 ml-4 animate-[fadeUp_0.2s_ease-out]">
-                  <div>
-                    <div className="ctrl-field-label">Gravity Alpha</div>
-                    <input type="range" min="0.5" max="2.0" step="0.1" value={alpha} onChange={e => { setAlpha(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
+                {showAdvanced && (
+                  <div className={`absolute top-[52px] left-0 border border-t-0 rounded-b-[6px] p-4 flex gap-6 z-50 shadow-2xl animate-[fadeUp_0.2s_ease-out] ${theme === 'light' ? 'bg-white border-slate-200' : 'bg-[#080C14] border-[var(--border)]'} transition-colors duration-300`}>
+                    <div>
+                      <div className="ctrl-field-label">Distance Decay α</div>
+                      <input type="range" min="0.5" max="2.0" step="0.1" value={alpha} onChange={e => { setAlpha(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
+                    </div>
+                    <div>
+                      <div className="ctrl-field-label">Urgency Growth λ</div>
+                      <input type="range" min="0.0" max="0.5" step="0.05" value={lambda} onChange={e => { setLambda(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
+                    </div>
+                    <div className="flex flex-col gap-2 mt-1">
+                      <label className="checkbox-container">
+                        <input type="checkbox" checked={enableCritical} onChange={e => {setEnableCritical(e.target.checked); setAppState("idle")}} />
+                        <span className="checkbox-custom"></span>
+                        <span className={`ctrl-field-label !mb-0 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>HOSPITALS/SCHOOLS</span>
+                      </label>
+                      <label className="checkbox-container">
+                        <input type="checkbox" checked={enableEvents} onChange={e => {setEnableEvents(e.target.checked); setAppState("idle")}} />
+                        <span className="checkbox-custom"></span>
+                        <span className={`ctrl-field-label !mb-0 ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>EVENT OVERLAYS</span>
+                      </label>
+                    </div>
                   </div>
-                  <div>
-                    <div className="ctrl-field-label">Urgency Lambda</div>
-                    <input type="range" min="0.0" max="0.5" step="0.05" value={lambda} onChange={e => { setLambda(+e.target.value); setAppState("idle"); }} className="w-20 accent-[var(--signal)]" />
-                  </div>
-                  <div className="flex flex-col gap-2 mt-1">
-                    <label className="checkbox-container">
-                      <input type="checkbox" checked={enableCritical} onChange={e => {setEnableCritical(e.target.checked); setAppState("idle")}} />
-                      <span className="checkbox-custom"></span>
-                      <span className="ctrl-field-label !mb-0 text-white">HOSPITALS/SCHOOLS</span>
-                    </label>
-                    <label className="checkbox-container">
-                      <input type="checkbox" checked={enableEvents} onChange={e => {setEnableEvents(e.target.checked); setAppState("idle")}} />
-                      <span className="checkbox-custom"></span>
-                      <span className="ctrl-field-label !mb-0 text-white">EVENT OVERLAYS</span>
-                    </label>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Zone 3 */}
@@ -402,11 +537,11 @@ export default function App() {
             </div>
           </div>
 
-          <div className="map-panel">
-            <div className="map-header">
+          <div className={`map-panel ${theme === 'light' ? 'bg-white border border-slate-200 shadow-sm' : 'bg-[#0F1724] border border-[#1E2D45]'} transition-colors duration-300`}>
+            <div className={`map-header border ${theme === 'light' ? 'bg-white/90 backdrop-blur-sm border-slate-200 text-slate-800 shadow-sm' : 'bg-[#080C14]/90 border-[var(--border)]'} transition-colors duration-300`}>
               <MapIcon className="w-3 h-3 inline mr-2" /> Live Tactical Radar
             </div>
-            <div className="map-legend">
+            <div className={`map-legend border rounded-md backdrop-blur-sm ${theme === 'light' ? 'bg-white/90 border-slate-200 text-slate-700' : 'bg-[#080C14]/90 border-[#1E2D45] text-[#C8D6F0]'} transition-colors duration-300`}>
               <div className="legend-item"><div className="legend-dot bg-[#FF0000]" /> Critical Node (&gt;1000m)</div>
               <div className="legend-item"><div className="legend-dot bg-[#FFB800]" /> Warning Node (&gt;300m)</div>
               <div className="legend-item"><div className="legend-dot bg-[#00E5A0]" /> Cleared / Dispatched</div>
@@ -414,9 +549,9 @@ export default function App() {
             </div>
 
             {appState === "analyzing" && (
-              <div className="absolute inset-0 z-[1001] bg-[var(--abyss)]/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none">
+              <div className={`absolute inset-0 z-[1001] backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none ${theme === 'light' ? 'bg-white/80' : 'bg-[#080C14]/80'} transition-colors duration-300`}>
                 <div className="solver-spinner mb-6"></div>
-                <div className="max-w-xs w-full bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg">
+                <div className={`max-w-xs w-full border p-4 rounded-lg ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[var(--surface)] border-[var(--border)]'} transition-colors duration-300`}>
                   <div className="solver-log">
                     {SPINNER_STEPS.map((step, i) => {
                        if (i > spinnerStep) return null;
@@ -432,12 +567,12 @@ export default function App() {
               </div>
             )}
 
-            <MapCanvas hotspots={cityData.hotspots} dispatched={dispatched} appState={appState} routes={routes} />
+            <MapCanvas hotspots={cityData.hotspots} dispatched={dispatched} appState={appState} routes={routes} theme={theme} />
           </div>
         </div>
 
         {/* RIGHT COLUMN: Manifest */}
-        <div className="manifest-panel">
+        <div className={`manifest-panel ${theme === 'light' ? 'bg-white border border-slate-200 shadow-sm' : 'bg-[#0F1724] border border-[#1E2D45]'} transition-colors duration-300`}>
           <div className="manifest-header">
             <div className="manifest-title">Operations Manifest</div>
             <div className={`manifest-status-badge ${appState === "deployed" ? "badge-optimized" : "badge-idle"}`}>
@@ -446,19 +581,19 @@ export default function App() {
           </div>
 
           <div className="impact-grid">
-            <div className="impact-cell">
+            <div className={`impact-cell ${theme === 'light' ? 'bg-white' : 'bg-[#0F1724]'} transition-colors duration-300`}>
               <div className="impact-label">Delay Cleared</div>
               <div className="impact-value text-[var(--signal)]">{metrics ? (metrics.total_delay_cleared/60).toFixed(1) : "0.0"} <span className="text-sm font-normal text-[var(--slate)]">HR</span></div>
             </div>
-            <div className="impact-cell">
+            <div className={`impact-cell ${theme === 'light' ? 'bg-white' : 'bg-[#0F1724]'} transition-colors duration-300`}>
               <div className="impact-label">Efficiency Rate</div>
-              <div className="impact-value text-white">{metrics ? metrics.pct_cleared.toFixed(1) : "0.0"} <span className="text-sm font-normal text-[var(--slate)]">%</span></div>
+              <div className={`impact-value ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{metrics ? metrics.pct_cleared.toFixed(1) : "0.0"} <span className="text-sm font-normal text-[var(--slate)]">%</span></div>
             </div>
-            <div className="impact-cell">
+            <div className={`impact-cell ${theme === 'light' ? 'bg-white' : 'bg-[#0F1724]'} transition-colors duration-300`}>
               <div className="impact-label">Unmanaged</div>
               <div className="impact-value text-[var(--alert)]">{metrics ? (metrics.unmanaged_delay/60).toFixed(1) : "0.0"} <span className="text-sm font-normal text-[var(--slate)]">HR</span></div>
             </div>
-            <div className="impact-cell">
+            <div className={`impact-cell ${theme === 'light' ? 'bg-white' : 'bg-[#0F1724]'} transition-colors duration-300`}>
               <div className="impact-label">Hotspots Cleared</div>
               <div className="impact-value text-[var(--amber)]">{dispatched.length} <span className="text-sm font-normal text-[var(--slate)]">NODES</span></div>
             </div>
@@ -468,7 +603,7 @@ export default function App() {
             <div className="manifest-empty">
               <AlertTriangle className="icon" />
               <div className="title">NO ACTIVE MANIFEST</div>
-              <div className="sub">Adjust parameters and Execute Dispatch to generate knapsack-optimized patrol routes.</div>
+              <div className={`sub ${theme === 'light' ? 'text-slate-500' : 'text-slate-300'}`}>Adjust parameters and Execute Dispatch to generate knapsack-optimized patrol routes.</div>
             </div>
           )}
 
@@ -481,25 +616,70 @@ export default function App() {
 
           {appState === "deployed" && (
             <div className="manifest-scroll">
-              {routes.map((h, i) => (
-                <div key={`${h.id}-${i}`} className="manifest-row" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="manifest-bar" />
+              {routes.map((h: any, i: number) => {
+                const totalDelay = Math.max(1, routes.reduce((sum: number, r: any) => sum + r.delay, 0));
+                const maxDelay = Math.max(1, Math.max(...routes.map((r: any) => r.delay)));
+                const maxCost = Math.max(1, Math.max(...routes.map((r: any) => r.cost || 1)));
+                const proportion = h.delay / totalDelay;
+                const barH = Math.floor(8 + proportion * 64);
+                const barOpacity = (0.35 + (h.delay / maxDelay) * 0.65).toFixed(2);
+                
+                const color = "var(--signal)";
+
+                return (
+                <div key={`${h.id}-${i}`} className={`manifest-row ${theme === 'light' ? 'bg-slate-50/60 hover:bg-slate-50' : 'bg-white/[0.02] hover:bg-white/[0.04]'} transition-colors duration-200`} style={{ animationDelay: `${i * 0.05}s`, minHeight: `${barH + 56}px` }}>
+                  <div className="manifest-bar" style={{ opacity: barOpacity, background: color, width: '4px', minHeight: `${barH + 56}px` }} />
                   <div className="manifest-content">
                     <div className="manifest-row-top">
                       <div>
-                        <div className="manifest-stop-id">OFFICER 0{h.officer_id + 1} — STOP 0{h.route_sequence}</div>
-                        <div className="manifest-hs-id">HS-{String(h.id).padStart(3,"0")}</div>
+                        <div className="manifest-stop-id" style={{ color: color, opacity: 0.8, fontWeight: 700 }}>
+                          STOP #{String(h.route_sequence).padStart(2, '0')} —
+                        </div>
+                        <div className="flex flex-col mb-1">
+                          <div className="flex items-center gap-2 text-sm text-[#C8D6F0] font-mono tracking-wider">
+                            HS-{String(h.id).padStart(3, '0')}
+
+                            {/* Mappls eLoc Badge — visually distinct when pending vs verified */}
+                            {(() => {
+                              const { label, isPending } = getElocDisplay(h.eloc);
+                              return (
+                                <span
+                                  className={
+                                    isPending
+                                      ? "text-slate-300 text-[9px] border border-slate-400/40 px-1.5 py-0.5 rounded bg-slate-700/10 tracking-widest"
+                                      : "text-[#00E5A0] text-[9px] border border-[#00E5A0]/40 px-1.5 py-0.5 rounded bg-[#00E5A0]/10 tracking-widest"
+                                  }
+                                  title={isPending ? "Mappls eLoc not yet resolved for this coordinate" : "Mappls verified digital address code"}
+                                >
+                                  {isPending ? "eLoc: —" : `eLoc: ${label}`}
+                                </span>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Mappls Physical Address — truncated with full text on hover */}
+                          <div
+                            className={`text-[10px] truncate max-w-full mt-0.5 ${theme === 'light' ? 'text-slate-400' : 'text-slate-300'}`}
+                            title={getAddressDisplay(h.address)}
+                          >
+                            📍 {getAddressDisplay(h.address)}
+                          </div>
+                        </div>
                       </div>
                       <div className="manifest-badges">
-                        {h.critical && <span className="badge badge-critical">{h.critical.split(" ")[1]}</span>}
-                        {h.event && <span className="badge badge-event">{h.event.split(" ")[1]}</span>}
-                        {h.tag?.includes("Repeat") ? <span className="badge badge-repeat">CHRONIC</span> : <span className="badge badge-anomaly">ANOMALY</span>}
+                        {h.critical && <span className="badge badge-critical">{h.critical.split(" ")[1] || h.critical}</span>}
+                        {h.event && <span className="badge badge-event">{h.event.split(" ")[1] || h.event}</span>}
+                        {h.tag?.includes("Repeat") ? <span className="badge badge-repeat">REPEAT</span> : <span className="badge badge-anomaly">ANOMALY</span>}
                       </div>
                     </div>
-                    <div className="manifest-delay">{h.delay.toLocaleString()}<span>MINS</span></div>
                     
-                    <div className="p-bar-wrap">
-                      <div className="p-bar-fill" style={{ width: `${Math.min(100, (h.delay/6000)*100)}%` }} />
+                    <div className="manifest-delay" style={{ color: color }}>
+                      {h.delay.toLocaleString()}
+                      <span style={{ letterSpacing: '1px' }}>MINS CLEARED</span>
+                    </div>
+                    
+                    <div className="p-bar-wrap" style={{ height: '3px', borderRadius: '2px', marginBottom: '8px' }}>
+                      <div className="p-bar-fill" style={{ width: `${Math.min(100, (h.cost/maxCost)*100)}%`, background: `linear-gradient(90deg, ${color}, #0066FF)`, borderRadius: '2px' }} />
                     </div>
                     
                     <div className="manifest-meta">
@@ -509,7 +689,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
@@ -520,14 +700,14 @@ export default function App() {
         <div className="bottom-grid animate-[fadeUp_0.5s_ease-out]">
           
           {/* DIGITAL TWIN */}
-          <div className="panel">
+          <div className={`panel ${theme === 'light' ? 'bg-white border border-slate-200 shadow-sm' : 'bg-[#0F1724] border border-[#1E2D45]'} transition-colors duration-300`}>
             <div className="panel-header"><Cpu className="w-3 h-3 inline mr-2" /> Digital Twin — Marginal Gain Forecaster</div>
             <div className="twin-cards">
               {twinData.map((t: any) => {
                 const maxME = Math.max(...twinData.map((d:any) => d.me), 1);
                 const isHero = t.me >= maxME * 0.9;
                 return (
-                  <div key={t.n} className={`twin-card ${isHero ? 'hero' : ''}`}>
+                  <div key={t.n} className={`twin-card ${isHero ? 'hero' : ''} ${theme === 'light' ? 'bg-slate-50/60 hover:bg-slate-50 border-transparent' : 'bg-[#080C14] hover:bg-white/[0.04] border-[#1E2D45] border'} cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all`} onClick={() => handleDeploy(officers + t.n)}>
                     {isHero && <div className="twin-hero-tag">Best ROI</div>}
                     <div className="twin-n">+{t.n} OFFICER{t.n > 1 ? 'S' : ''}</div>
                     <div className="twin-delta" style={{ color: isHero ? 'var(--signal)' : 'var(--frost)' }}>+{t.delta.toLocaleString()}<span>MIN</span></div>
@@ -557,11 +737,11 @@ export default function App() {
           </div>
 
           {/* CHRONIC REGISTRY */}
-          <div className="panel">
+          <div className={`panel ${theme === 'light' ? 'bg-white border border-slate-200 shadow-sm' : 'bg-[#0F1724] border border-[#1E2D45]'} transition-colors duration-300`}>
             <div className="panel-header"><BarChart2 className="w-3 h-3 inline mr-2" /> Chronic Registry (17-Week Trend)</div>
             <div>
-              {CHRONIC_REGISTRY.slice(0, 4).map((r, i) => (
-                <div key={r.id} className="registry-row">
+              {(cityData?.chronic_registry || []).slice(0, 4).map((r: any) => (
+                <div key={r.id} className={`registry-row ${theme === 'light' ? 'border-b border-slate-200' : 'border-b border-[#1E2D45]'} transition-colors duration-300`}>
                   <div className={`rank-medallion rank-${r.rank <= 3 ? r.rank : 'n'}`}>0{r.rank}</div>
                   <div className="registry-info">
                     <div className="registry-hs-id">HS-{String(r.id).padStart(3,"0")}</div>
